@@ -6,7 +6,7 @@ Routes
     GET  /api/week?student_id&monday  combined week (timetable + Phoenix) with clashes
     POST /api/phoenix               {student_id, url} -> fetch + store feed (URL is a secret: never returned)
     POST /api/ingest                multipart file (.html or .eml) -> ingest timetable version
-    GET  /api/status                latest timetable version + recent room changes for a student
+    GET  /api/setup/status          {timetable, received_at, students} — the start screen offers an upload when empty
     POST /api/leave                 leave request -> agent.answer (AI) -> draft + Outlook link
 """
 import json
@@ -134,6 +134,15 @@ async def ingest(file: UploadFile = File(...)):
     if res["new"] and res["room_changes"]:
         notify.notify_room_changes(con, res["version"])
     return res
+
+
+@app.get("/api/setup/status")
+def setup_status():
+    """Whether a timetable has been loaded. A fresh install has none, so the start screen shows an upload card."""
+    con = store.connect()
+    ver = con.execute("SELECT received_at FROM tkb_versions ORDER BY received_at DESC LIMIT 1").fetchone()
+    return {"timetable": ver is not None, "received_at": ver["received_at"] if ver else None,
+            "students": con.execute("SELECT count(*) n FROM students").fetchone()["n"]}
 
 
 class LeaveIn(BaseModel):

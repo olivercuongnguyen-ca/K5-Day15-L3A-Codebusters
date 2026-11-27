@@ -378,12 +378,48 @@ async function pushState() {
 async function start(sid) {
   state.sid = sid.trim().toUpperCase(); state.share = null;
   state.day = iso(new Date()); state.monday = mondayOf(new Date());
-  if (!(await loadWeek())) { ls.set('sid', null); $('#whomsg').className = 'msg err'; $('#whomsg').textContent = 'Không tìm thấy mã học viên này trong thời khoá biểu hiện tại.'; $('#grid').innerHTML = ''; return; }
+  if (!(await loadWeek())) {
+    ls.set('sid', null); $('#grid').innerHTML = '';
+    $('#whomsg').className = 'msg err';
+    $('#whomsg').textContent = state.setup && !state.setup.timetable
+      ? 'App chưa có thời khoá biểu. Tải file thời khoá biểu ở bước 1 trước.'
+      : 'Không tìm thấy mã học viên này trong thời khoá biểu đã tải. Kiểm tra lại mã, hoặc tải bản thời khoá biểu mới hơn.';
+    $('#newtkb').hidden = !(state.setup && state.setup.timetable);
+    return false;
+  }
   ls.set('sid', state.sid);
   $('#empty').hidden = true; $('#app').hidden = false; $('#tabbar').hidden = false;
   $('#whochip').hidden = false; $('#whoid').textContent = state.sid;
   loadCalendarLinks(); pushState();
+  return true;
 }
+
+/* ---------- First run: no timetable yet ---------- */
+async function loadSetup() {
+  try { state.setup = await api('/api/setup/status'); } catch (e) { return; }
+  const empty = !state.setup.timetable;
+  $('#setup').hidden = !empty;
+  $('#whoh').textContent = empty ? 'Bước 2: xem lịch của bạn' : 'Xem lịch của bạn';
+}
+$('#newtkb').addEventListener('click', () => {
+  $('#setup').hidden = false; $('#setuph').textContent = 'Tải thời khoá biểu mới hơn';
+  $('#setuptext').textContent = 'Chọn file Thoi_khoa_bieu_….html mới nhất từ email của ban đào tạo. Bản trùng sẽ được bỏ qua.';
+  $('#setupfile').focus();
+});
+$('#setup').addEventListener('submit', async e => {
+  e.preventDefault();
+  const msg = $('#setupmsg'), f = $('#setupfile').files[0];
+  if (!f) return;
+  const fd = new FormData(); fd.append('file', f);
+  msg.className = 'msg'; msg.textContent = 'Đang đọc file…';
+  try {
+    const r = await api('/api/ingest', {method: 'POST', body: fd});
+    msg.className = 'msg ok';
+    msg.textContent = r.new ? `Đã tải: ${r.students} học viên. Giờ nhập mã học viên của bạn ở dưới.` : 'Bản này đã có sẵn, không có gì thay đổi.';
+    await loadSetup(); $('#setup').hidden = false; $('#newtkb').hidden = true; $('#whomsg').textContent = '';
+    $('#sid').focus();
+  } catch (err) { msg.className = 'msg err'; msg.textContent = err.message; }
+});
 
 async function startShared(token) {
   state.share = token; state.sid = null; state.day = iso(new Date()); state.monday = mondayOf(new Date());
@@ -395,7 +431,21 @@ async function startShared(token) {
   }
 }
 
-$('#who').addEventListener('submit', e => { e.preventDefault(); if ($('#sid').value.trim()) start($('#sid').value); });
+$('#who').addEventListener('submit', async e => {
+  e.preventDefault();
+  if (!$('#sid').value.trim()) return;
+  if (!(await start($('#sid').value))) return;
+  const url = $('#phx0').value.trim();
+  if (!url) return;
+  try {
+    const r = await post('/api/phoenix', {student_id: state.sid, url});
+    $('#phx0').value = '';
+    await loadWeek();
+    $('#notices').insertAdjacentHTML('afterbegin', `<div class="notice info">${icon('i-link')}<span>Đã kết nối lịch Phoenix: ${r.events} sự kiện.</span></div>`);
+  } catch (err) {
+    $('#notices').insertAdjacentHTML('afterbegin', `<div class="notice warn">${icon('i-alert')}<span>Chưa kết nối được lịch Phoenix: ${esc(err.message)} Thử lại trong <a href="#caidat">Cài đặt</a>.</span></div>`);
+  }
+});
 $('#switch').addEventListener('click', () => { ls.set('sid', null); location.hash = ''; location.reload(); });
 $('#prev').addEventListener('click', () => go(state.view === 'day' ? addDays(state.day, -1) : addDays(state.monday, -7)));
 $('#next').addEventListener('click', () => go(state.view === 'day' ? addDays(state.day, 1) : addDays(state.monday, 7)));
@@ -455,4 +505,4 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').cat
 api('/api/buildings').then(b => state.buildings = b).catch(() => {});
 const shareTok = (location.hash.match(/^#share-([\w-]+)$/) || [])[1];
 if (shareTok) startShared(shareTok);
-else { const saved = ls.get('sid'); if (saved) { $('#sid').value = saved; start(saved); } }
+else loadSetup().then(() => { const saved = ls.get('sid'); if (saved && state.setup && state.setup.timetable) { $('#sid').value = saved; start(saved); } });
