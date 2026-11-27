@@ -1,9 +1,9 @@
 const $ = s => document.querySelector(s);
 const DOW = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
-const KIND = {LEC: 'Lý thuyết', LAB: 'Thực hành', ONL: 'Học online', KG: 'Khai giảng', HACK: 'Hackathon',
+const KIND = {team_meeting: 'Họp nhóm', LEC: 'Lý thuyết', LAB: 'Thực hành', ONL: 'Học online', KG: 'Khai giảng', HACK: 'Hackathon',
   event: 'Workshop / Office hour', mentor_duty: 'Mentor duty', deadline: 'Hạn nộp', other: 'Sự kiện'};
 const state = {view: 'day', day: null, sid: null, share: null, monday: null, week: null, upcoming: [], buildings: null, current: null,
-  filters: new Set(['class', 'event', 'duty', 'deadline']), team: ''};
+  filters: new Set(['class', 'event', 'duty', 'meeting', 'deadline']), team: ''};
 
 const pad = n => String(n).padStart(2, '0');
 const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -15,7 +15,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '
 const icon = id => `<svg class="ic" aria-hidden="true"><use href="#${id}"/></svg>`;
 const ls = {get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } },
   set: (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }};
-const cat = x => x.is_deadline ? 'deadline' : x.source === 'tkb' ? 'class' : x.kind === 'mentor_duty' ? 'duty' : 'event';
+const cat = x => x.is_deadline ? 'deadline' : x.source === 'tkb' ? 'class' : x.kind === 'mentor_duty' ? 'duty' : x.kind === 'team_meeting' ? 'meeting' : 'event';
 const teamOf = x => (x.title.match(/Nhóm\s*\d+/i) || [''])[0];
 
 async function api(path, opts) {
@@ -26,7 +26,7 @@ async function api(path, opts) {
 }
 const post = (path, data) => api(path, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)});
 const weekUrl = monday => state.share ? `/api/shared/${state.share}?monday=${monday}`
-  : `/api/week?student_id=${encodeURIComponent(state.sid)}&monday=${monday}`;
+  : `/api/week?monday=${monday}`;
 
 /* ---------- Week ---------- */
 async function loadWeek() {
@@ -35,7 +35,6 @@ async function loadWeek() {
   catch (e) { $('#grid').innerHTML = `<p class="msg err">${esc(e.message)}</p>`; return false; }
   render();
   loadUpcoming();
-  resetSummary();
   return true;
 }
 
@@ -77,9 +76,11 @@ function evCard(x, clashIds, extra = '') {
   if (x.is_deadline) return `<button class="ev dl" data-id="${esc(x.id)}"><span class="t">${hm(x.start)}</span><span class="n">${icon('i-flag')} ${esc(x.title)}</span>${extra}</button>`;
   const room = x.source === 'tkb'
     ? (x.kind === 'ONL' ? `<span class="room">${icon('i-video')}Online</span>` : x.my_room ? `<span class="room">${icon('i-pin')}${esc(x.my_room)}</span>` : '<span class="room">Chưa có phòng</span>')
+    : x.kind === 'team_meeting' ? `<span class="room">${icon('i-video')}Họp online</span>`
     : (x.location ? `<span class="room">${icon('i-video')}Online</span>` : '');
-  const clash = clashIds.has(x.id) ? `<span class="clashtag">${icon('i-alert')}Trùng giờ</span>` : '';
-  return `<button class="ev ${x.kind}${clash ? ' clash' : ''}" data-id="${esc(x.id)}"><span class="t">${hm(x.start)}<br>${hm(x.end)}</span><span class="n">${esc(x.title)}</span>${room}${clash}${extra}</button>`;
+  const clash = !x.cancelled && clashIds.has(x.id) ? `<span class="clashtag">${icon('i-alert')}Trùng giờ</span>` : '';
+  if (x.changed_by_mentor) extra = `<span class="mtag">${x.cancelled ? 'Mentor đã huỷ ca này' : 'Mentor đã đổi lịch'}${x.note ? ': ' + esc(x.note) : ''}</span>` + extra;
+  return `<button class="ev ${x.kind}${clash ? ' clash' : ''}${x.cancelled ? ' cancelled' : ''}" data-id="${esc(x.id)}"><span class="t">${hm(x.start)}<br>${hm(x.end)}</span><span class="n">${esc(x.title)}</span>${room}${clash}${extra}</button>`;
 }
 
 /* Daily: hour-based. Today shows only what is ongoing or still ahead. */
@@ -186,25 +187,6 @@ function tickCountdown() {
 }
 setInterval(tickCountdown, 30000);
 
-/* ---------- AI weekly summary ---------- */
-function resetSummary() {
-  $('#summary').hidden = !!state.share;
-  $('#sumbody').className = 'muted';
-  $('#sumbody').textContent = 'Bấm để AI đọc phần còn lại của tuần (từ bây giờ) và liệt kê việc còn phải làm.';
-}
-
-async function loadSummary() {
-  const btn = $('#sumbtn'); btn.disabled = true;
-  $('#sumbody').className = ''; $('#sumbody').innerHTML = '<div class="skel"></div><div class="skel" style="width:80%"></div><div class="skel" style="width:60%"></div>';
-  try {
-    const s = await api(`/api/summary?student_id=${encodeURIComponent(state.sid)}&monday=${state.monday}`);
-    $('#sumbody').innerHTML = `<p class="sumhl">${esc(s.headline)}</p>
-      <ul class="sumlist">${s.items.map(i => `<li><span class="w">${esc(i.when)}</span><span>${esc(i.what)}</span></li>`).join('')}</ul>
-      ${s.tip ? `<p class="tip">${esc(s.tip)}</p>` : ''}
-      <p class="meta">${s.ai ? `AI tóm tắt từ lịch của bạn (${esc(s.usage.model)}). Kiểm tra lại giờ trên lịch.` : 'Tóm tắt tự động từ lịch (không dùng AI).'}</p>`;
-  } catch (e) { $('#sumbody').innerHTML = `<p class="msg err">${esc(e.message)}</p>`; }
-  btn.disabled = false; btn.textContent = 'Tóm tắt lại';
-}
 
 /* ---------- Detail sheet + map + leave ---------- */
 function openPanel(id) {
@@ -215,7 +197,16 @@ function openPanel(id) {
   $('#ptitle').textContent = x.title;
   $('#ptime').textContent = `${DOW[(new Date(x.start.slice(0, 10) + 'T00:00:00').getDay() + 6) % 7]}, ${dm(x.start)} · ${hm(x.start)}–${hm(x.end)}`;
   const rows = [];
-  if (x.source === 'tkb') {
+  if (x.source === 'team') {
+    const mine = state.student && x.organizer === state.student.student_id;
+    if (x.cancelled) rows.push(['Trạng thái', '<b>Đã huỷ</b>']);
+    else rows.push(['Tham gia', `<a class="btn primary sm" href="${esc(x.url)}" target="_blank" rel="noopener">${icon('i-video')}Vào phòng họp</a>`]);
+    rows.push(['Link', `<code>${esc(x.url)}</code>`]);
+    if (x.passcode) rows.push(['Mật khẩu phòng', `<code>${esc(x.passcode)}</code> <button class="btn ghost sm" type="button" data-copy="${esc(x.passcode)}">Sao chép</button>`]);
+    rows.push(['Người đặt', mine ? 'Bạn' : esc(x.organizer)]);
+    if (x.note) rows.push(['Ghi chú', esc(x.note)]);
+    if (mine && !x.cancelled) rows.push(['', `<button class="btn sm" type="button" id="mcancel">Huỷ buổi họp</button> <span id="mcmsg" class="msg"></span>`]);
+  } else if (x.source === 'tkb') {
     rows.push(['Phòng của bạn', esc(x.kind === 'ONL' ? 'Online' : (x.my_room || 'Chưa được xếp phòng'))]);
     const all = (x.class_rooms || []).map(r => r.code + (r.backup ? ' (dự phòng)' : '')).join(', ');
     if (all) rows.push(['Phòng của cả lớp', esc(all)]);
@@ -224,12 +215,105 @@ function openPanel(id) {
     rows.push(['Nguồn', 'Lịch Phoenix']);
   }
   $('#pinfo').innerHTML = `<dl class="facts">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
+  $('#pinfo').querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', () => copy(b.dataset.copy, b)));
+  const mc = $('#mcancel');
+  if (mc) mc.addEventListener('click', async () => {
+    try { await api('/api/meetings/' + encodeURIComponent(x.id), {method: 'DELETE'}); closePanel(); loadWeek(); }
+    catch (err) { $('#mcmsg').className = 'msg err'; $('#mcmsg').textContent = err.message.includes('mật khẩu') || err.message.includes('Đăng nhập') ? 'Mở "Đặt lịch họp nhóm" và đăng nhập trước khi huỷ.' : err.message; }
+  });
   showMap(x.source === 'tkb' && x.kind !== 'ONL' ? x.my_room : null);
   $('#leave').hidden = x.source !== 'tkb' || !!state.share;
   $('#result').innerHTML = ''; $('#reason').value = '';
   $('#scrim').hidden = false; $('#panel').hidden = false;
   $('#close').focus();
 }
+
+/* ---------- Team meetings ---------- */
+const DOWS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+const whenOf = (a, b) => `${DOWS[new Date(a.slice(0, 10) + 'T00:00:00').getDay()]} ${dm(a)} · ${hm(a)}–${hm(b)}`;
+
+function showMeetCard() {
+  const me = state.student;
+  if (!me || state.share) return;
+  $('#meetcard').hidden = false;
+  $('#meetstate').innerHTML = me.team
+    ? `Đặt lịch họp cho <b>${esc(me.team)}</b>. App gợi ý giờ cả nhóm không có lịch học hay mentor duty, rồi báo cho mọi người.`
+    : 'Bạn chưa có nhóm. Nhập số nhóm trong <a href="#caidat">Cài đặt</a> để đặt lịch họp nhóm.';
+  $('#meetopen').disabled = !me.team;
+}
+
+function meetAuthUi() {
+  const me = state.student, need = !me.signed_in || me.must_change;
+  $('#mauth').hidden = !need;
+  $('#mpw2f').hidden = me.has_password; $('#mpw2').required = !me.has_password;
+  $('#mpw').autocomplete = me.has_password ? 'current-password' : 'new-password';
+  $('#mpwlabel').textContent = me.has_password ? 'Mật khẩu của bạn' : 'Tạo mật khẩu (≥ 8 ký tự)';
+  $('#mauthtext').textContent = me.has_password
+    ? 'Để đặt lịch họp, đăng nhập bằng mật khẩu của bạn. Xem lịch vẫn chỉ cần mã học viên.'
+    : 'Lần đầu đặt lịch họp: tạo mật khẩu cho mã học viên của bạn. Xem lịch vẫn chỉ cần mã học viên; các bạn trong nhóm không cần mật khẩu để xem hay vào họp.';
+}
+
+async function loadSuggestions() {
+  const box = $('#msug');
+  box.innerHTML = '<span class="muted">Đang tìm giờ rảnh…</span>';
+  try {
+    const r = await api(`/api/meetings/suggest?duration=${$('#mdur').value}`);
+    $('#mteam').textContent = `${r.team} · ${r.members} thành viên`;
+    if (!r.suggestions.length) { box.innerHTML = '<p class="muted">7 ngày tới không có khung giờ nào cả nhóm cùng rảnh (08:00–22:00). Bạn vẫn có thể tự chọn giờ ở dưới.</p>'; return; }
+    box.innerHTML = r.suggestions.map((g, k) => `<button type="button" class="sug" role="listitem" data-k="${k}">
+      <b>${whenOf(g.start, g.end)}</b>${g.optional_overlaps.length ? `<small>Trùng: ${esc(g.optional_overlaps.join(', '))} (không bắt buộc)</small>` : '<small>Cả nhóm đều rảnh</small>'}</button>`).join('');
+    box.querySelectorAll('.sug').forEach(b => b.addEventListener('click', () => pickSlot(r.suggestions[+b.dataset.k], b)));
+    if (!$('#mdate').value) {  // prefill the first slot that clashes with nothing, optional events included
+      const k = Math.max(0, r.suggestions.findIndex(g => !g.optional_overlaps.length));
+      pickSlot(r.suggestions[k], box.querySelectorAll('.sug')[k]);
+    }
+  } catch (err) { box.innerHTML = `<p class="msg err">${esc(err.message)}</p>`; }
+}
+
+function pickSlot(g, btn) {
+  $('#mdate').value = g.start.slice(0, 10); $('#mstart').value = hm(g.start); $('#mend').value = hm(g.end);
+  document.querySelectorAll('#msug .sug').forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
+  $('#mforce').hidden = true; $('#mmsg').textContent = '';
+}
+
+function openMeet() {
+  $('#meetform').reset(); $('#mmsg').textContent = ''; $('#mforce').hidden = true;
+  meetAuthUi();
+  $('#scrim').hidden = false; $('#meetpanel').hidden = false;
+  loadSuggestions();
+  $('#mclose').focus();
+}
+
+async function submitMeet(force) {
+  const msg = $('#mmsg'), me = state.student;
+  const body = {start: `${$('#mdate').value}T${$('#mstart').value}`, end: `${$('#mdate').value}T${$('#mend').value}`,
+    link: $('#mlink').value.trim(), passcode: $('#mpass').value.trim(), title: $('#mname').value.trim(), note: $('#mnote').value.trim(), force};
+  if (!$('#mdate').value || !$('#mstart').value || !$('#mend').value) { msg.className = 'msg err'; msg.textContent = 'Chọn ngày và giờ họp.'; return; }
+  if (!/^https?:\/\/\S{3,}$/.test(body.link)) { msg.className = 'msg err'; msg.textContent = 'Dán link họp bắt đầu bằng https:// (Google Meet, Zoom, Teams…).'; $('#mlink').focus(); return; }
+  msg.className = 'msg'; msg.textContent = 'Đang đặt lịch…';
+  try {
+    if (!me.signed_in || me.must_change) {
+      const pw = $('#mpw').value;
+      if (!me.has_password && pw !== $('#mpw2').value) throw new Error('Hai mật khẩu không khớp.');
+      Object.assign(state.student, await post('/api/student/login', {student_id: me.student_id, password: pw, create: !me.has_password}));
+      $('#mpw').value = $('#mpw2').value = '';
+      meetAuthUi();
+      if (state.student.must_change) throw new Error('Mật khẩu này là mật khẩu tạm do giáo vụ cấp. Đổi mật khẩu trước khi đặt lịch.');
+    }
+    const r = await post('/api/meetings', body);
+    closePanel();
+    await loadWeek();
+    $('#notices').insertAdjacentHTML('afterbegin', `<div class="notice info">${icon('i-video')}<span>Đã đặt lịch họp ${esc(r.team)} lúc <b>${whenOf(r.start, r.end)}</b> và báo cho cả nhóm.</span></div>`);
+  } catch (err) {
+    msg.className = 'msg err'; msg.textContent = err.message;
+    $('#mforce').hidden = !/^Trùng lịch/.test(err.message);
+  }
+}
+$('#meetopen').addEventListener('click', openMeet);
+$('#mclose').addEventListener('click', closePanel);
+$('#mdur').addEventListener('change', () => { $('#mdate').value = ''; loadSuggestions(); });
+$('#meetform').addEventListener('submit', e => { e.preventDefault(); submitMeet(false); });
+$('#mforce').addEventListener('click', () => submitMeet(true));
 
 /* ---------- Campus map (SVG, zoom + pan) ---------- */
 const MAPV = {full: [0, 0, 1701, 2000], central: [290, 650, 760, 560]};  // central = parking lot + A/B/C/E/G/H/I
@@ -299,7 +383,7 @@ $('#mapin').addEventListener('click', () => zoomMap(1 / 1.4));
 $('#mapout').addEventListener('click', () => zoomMap(1.4));
 $('#mapfit').addEventListener('click', () => setView([...MAPV.full]));
 $('#mapcenter').addEventListener('click', () => setView([...MAPV.central]));
-function closePanel() { $('#scrim').hidden = true; $('#panel').hidden = true; }
+function closePanel() { $('#scrim').hidden = true; $('#panel').hidden = true; $('#meetpanel').hidden = true; }
 
 const sessionHint = x => /^(LEC|LAB) \d+$/.test(x.title) ? x.title : `${Number(hm(x.start).slice(0, 2)) < 12 ? 'sáng' : 'chiều'} ${dm(x.start)}`;
 const outlookLink = (to, subject, body) => `https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(to)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -315,7 +399,7 @@ async function submitLeave(ev) {
   btn.disabled = true; btn.innerHTML = '<span class="spin" aria-hidden="true"></span>Đang soạn…';
   out.innerHTML = '';
   try {
-    const r = await post('/api/leave', {student_id: state.sid, session: sessionHint(x), reason: $('#reason').value, evidence_type: $('#evidence').value});
+    const r = await post('/api/leave', {session: sessionHint(x), reason: $('#reason').value, evidence_type: $('#evidence').value});
     if (r.status !== 'ready') {
       out.innerHTML = `<div class="ask ${r.status === 'refuse' ? 'refuse' : ''}">${esc(r.question)}</div>`;
     } else {
@@ -344,7 +428,7 @@ async function submitLeave(ev) {
 /* ---------- Settings: Phoenix, push, sync, share, ingest ---------- */
 async function loadCalendarLinks() {
   try {
-    const l = await api(`/api/calendar-links?student_id=${encodeURIComponent(state.sid)}`);
+    const l = await api('/api/calendar-links');
     $('#gcal').href = l.google; $('#ocal').href = l.outlook; $('#copyics').dataset.url = l.ics;
   } catch (e) {}
 }
@@ -362,7 +446,7 @@ async function enablePush() {
     const reg = await navigator.serviceWorker.ready;
     const {key} = await api('/api/push/key');
     const sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: b64ToBytes(key)});
-    await post('/api/push/subscribe', {student_id: state.sid, sub: sub.toJSON()});
+    await post('/api/push/subscribe', {sub: sub.toJSON()});
     msg.className = 'msg ok'; msg.textContent = 'Đã bật thông báo trên thiết bị này.';
     $('#pushon').hidden = true; $('#pushtest').hidden = false;
   } catch (e) { msg.className = 'msg err'; msg.textContent = 'Không bật được thông báo: ' + e.message; }
@@ -379,15 +463,10 @@ async function start(sid) {
   state.sid = sid.trim().toUpperCase(); state.share = null;
   state.day = iso(new Date()); state.monday = mondayOf(new Date());
   if (!(await loadWeek())) {
-    ls.set('sid', null); $('#grid').innerHTML = '';
-    $('#whomsg').className = 'msg err';
-    $('#whomsg').textContent = state.setup && !state.setup.timetable
-      ? 'App chưa có thời khoá biểu. Tải file thời khoá biểu ở bước 1 trước.'
-      : 'Không tìm thấy mã học viên này trong thời khoá biểu đã tải. Kiểm tra lại mã, hoặc tải bản thời khoá biểu mới hơn.';
-    $('#newtkb').hidden = !(state.setup && state.setup.timetable);
+    $('#grid').innerHTML = ''; $('#whomsg').className = 'msg err';
+    $('#whomsg').textContent = 'Không tìm thấy mã học viên này trong thời khoá biểu hiện tại.';
     return false;
   }
-  ls.set('sid', state.sid);
   $('#empty').hidden = true; $('#app').hidden = false; $('#tabbar').hidden = false;
   $('#whochip').hidden = false; $('#whoid').textContent = state.sid;
   loadCalendarLinks(); pushState();
@@ -401,11 +480,6 @@ async function loadSetup() {
   $('#setup').hidden = !empty;
   $('#whoh').textContent = empty ? 'Bước 2: xem lịch của bạn' : 'Xem lịch của bạn';
 }
-$('#newtkb').addEventListener('click', () => {
-  $('#setup').hidden = false; $('#setuph').textContent = 'Tải thời khoá biểu mới hơn';
-  $('#setuptext').textContent = 'Chọn file Thoi_khoa_bieu_….html mới nhất từ email của ban đào tạo. Bản trùng sẽ được bỏ qua.';
-  $('#setupfile').focus();
-});
 $('#setup').addEventListener('submit', async e => {
   e.preventDefault();
   const msg = $('#setupmsg'), f = $('#setupfile').files[0];
@@ -413,10 +487,10 @@ $('#setup').addEventListener('submit', async e => {
   const fd = new FormData(); fd.append('file', f);
   msg.className = 'msg'; msg.textContent = 'Đang đọc file…';
   try {
-    const r = await api('/api/ingest', {method: 'POST', body: fd});
+    const r = await api('/api/setup/timetable', {method: 'POST', body: fd});
     msg.className = 'msg ok';
     msg.textContent = r.new ? `Đã tải: ${r.students} học viên. Giờ nhập mã học viên của bạn ở dưới.` : 'Bản này đã có sẵn, không có gì thay đổi.';
-    await loadSetup(); $('#setup').hidden = false; $('#newtkb').hidden = true; $('#whomsg').textContent = '';
+    await loadSetup(); $('#setup').hidden = false; $('#whomsg').textContent = '';
     $('#sid').focus();
   } catch (err) { msg.className = 'msg err'; msg.textContent = err.message; }
 });
@@ -424,21 +498,34 @@ $('#setup').addEventListener('submit', async e => {
 async function startShared(token) {
   state.share = token; state.sid = null; state.day = iso(new Date()); state.monday = mondayOf(new Date());
   $('#empty').hidden = true; $('#app').hidden = false;
-  $('#caidat').hidden = true; $('#summary').hidden = true;
+  $('#caidat').hidden = true; $('#meetcard').hidden = true;
   if (await loadWeek()) {
     $('#sharebanner').hidden = false;
     $('#sharebanner').innerHTML = `${icon('i-share')}<span>Bạn đang xem lịch của <b>${esc(state.week.owner || 'một thành viên')}</b> (chỉ xem). <a href="/">Mở lịch của bạn</a></span>`;
   }
 }
 
+/* ---------- Sign-in ---------- */
+$('#stafftoggle').addEventListener('click', () => { $('#who').hidden = true; $('#setup').hidden = true; $('#stafflogin').hidden = false; $('#uname').focus(); });
+$('#studenttoggle').addEventListener('click', () => { $('#stafflogin').hidden = true; $('#who').hidden = false; loadSetup(); });
 $('#who').addEventListener('submit', async e => {
   e.preventDefault();
-  if (!$('#sid').value.trim()) return;
-  if (!(await start($('#sid').value))) return;
-  const url = $('#phx0').value.trim();
+  const msg = $('#whomsg');
+  msg.className = 'msg'; msg.textContent = 'Đang mở lịch…';
+  let me;
+  try { me = await post('/api/student/enter', {student_id: $('#sid').value.trim(), team: $('#team0').value.trim()}); }
+  catch (err) {
+    msg.className = 'msg err';
+    msg.textContent = state.setup && !state.setup.timetable ? 'App chưa có thời khoá biểu. Tải file thời khoá biểu ở bước 1 trước.'
+      : err.message + ' Nếu thời khoá biểu đã cũ, admin cần tải bản mới.';
+    return;
+  }
+  msg.textContent = '';
+  if (!(await onStudent(me))) return;
+  const url = $('#phx0').value.trim();  // optional Phoenix link: a bad link warns but never blocks the schedule
   if (!url) return;
   try {
-    const r = await post('/api/phoenix', {student_id: state.sid, url});
+    const r = await post('/api/phoenix', {url});
     $('#phx0').value = '';
     await loadWeek();
     $('#notices').insertAdjacentHTML('afterbegin', `<div class="notice info">${icon('i-link')}<span>Đã kết nối lịch Phoenix: ${r.events} sự kiện.</span></div>`);
@@ -446,7 +533,60 @@ $('#who').addEventListener('submit', async e => {
     $('#notices').insertAdjacentHTML('afterbegin', `<div class="notice warn">${icon('i-alert')}<span>Chưa kết nối được lịch Phoenix: ${esc(err.message)} Thử lại trong <a href="#caidat">Cài đặt</a>.</span></div>`);
   }
 });
-$('#switch').addEventListener('click', () => { ls.set('sid', null); location.hash = ''; location.reload(); });
+$('#stafflogin').addEventListener('submit', async e => {
+  e.preventDefault();
+  const msg = $('#stafmsg');
+  msg.className = 'msg'; msg.textContent = 'Đang đăng nhập…';
+  try {
+    const me = await post('/api/auth/login', {username: $('#uname').value.trim(), password: $('#pw').value});
+    $('#pw').value = ''; msg.textContent = ''; onStaff(me);
+  } catch (err) { msg.className = 'msg err'; msg.textContent = err.message; }
+});
+$('#pwform').addEventListener('submit', async e => {
+  e.preventDefault();
+  try {
+    await post('/api/auth/password', {old: $('#pwold').value, new: $('#pwnew').value});
+    $('#pwform').hidden = true; onStaff(await api('/api/auth/me'));
+  } catch (err) { $('#pwmsg').className = 'msg err'; $('#pwmsg').textContent = err.message; }
+});
+$('#switch').addEventListener('click', async () => {
+  try { await post(state.staff ? '/api/auth/logout' : '/api/student/exit', {}); } catch (e) {}
+  location.hash = ''; location.reload();
+});
+
+function showTeam(me) {
+  $('#teamstate').innerHTML = me.team
+    ? `Bạn đang ở <b>${esc(me.team)}</b>${me.team_set_by === 'phoenix' ? ' (lấy từ lịch Phoenix)' : ''}. Lịch mentor duty và thay đổi của mentor sẽ theo nhóm này.`
+    : 'Chưa có nhóm. Khi được chia nhóm, nhập số nhóm để nhận lịch và thông báo mentor duty.';
+  $('#teamin').value = me.team ? me.team.replace(/\D/g, '') : '';
+}
+$('#teamform').addEventListener('submit', async e => {
+  e.preventDefault();
+  try {
+    const me = await api('/api/student/team', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({team: $('#teamin').value.trim()})});
+    showTeam(me); $('#teammsg').className = 'msg ok'; $('#teammsg').textContent = me.team ? 'Đã lưu.' : 'Đã xoá số nhóm.';
+    loadWeek();
+  } catch (err) { $('#teammsg').className = 'msg err'; $('#teammsg').textContent = err.message; }
+});
+
+async function onStudent(me) {
+  state.staff = false; state.student = me; showMeetCard();
+  $('#setup').hidden = true; $('#caidat .admin').hidden = true;
+  showTeam(me);
+  return start(me.student_id);
+}
+
+function onStaff(me) {
+  state.staff = true; state.me = me;
+  $('#who').hidden = true; $('#stafflogin').hidden = true; $('#setup').hidden = true;
+  $('#whochip').hidden = false; $('#whoid').textContent = me.username; $('#switch').textContent = 'Đăng xuất';
+  if (me.must_change) { $('#pwform').hidden = false; return; }
+  $('#staff').hidden = false;
+  $('#staffh').textContent = me.role === 'admin' ? 'Tài khoản admin' : 'Tài khoản mentor';
+  $('#stafftext').textContent = me.role === 'admin'
+    ? `Xin chào ${me.display_name}. Bạn có thể cập nhật thời khoá biểu, sửa buổi học và quản lý tài khoản mentor.`
+    : `Xin chào ${me.display_name}. Bạn phụ trách: ${me.teams.join(', ') || 'chưa được gán nhóm'}.`;
+}
 $('#prev').addEventListener('click', () => go(state.view === 'day' ? addDays(state.day, -1) : addDays(state.monday, -7)));
 $('#next').addEventListener('click', () => go(state.view === 'day' ? addDays(state.day, 1) : addDays(state.monday, 7)));
 $('#today').addEventListener('click', () => go(iso(new Date())));
@@ -455,9 +595,8 @@ state.view = ls.get('view') === 'week' ? 'week' : 'day';
 setInterval(() => { if (state.week) render(); }, 60000);  // drop items as they end
 $('#close').addEventListener('click', closePanel);
 $('#scrim').addEventListener('click', closePanel);
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#panel').hidden) closePanel(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && (!$('#panel').hidden || !$('#meetpanel').hidden)) closePanel(); });
 $('#leaveform').addEventListener('submit', submitLeave);
-$('#sumbtn').addEventListener('click', loadSummary);
 document.querySelectorAll('.fchip').forEach(b => b.addEventListener('click', () => {
   const f = b.dataset.f, on = !state.filters.has(f);
   on ? state.filters.add(f) : state.filters.delete(f);
@@ -467,13 +606,13 @@ document.querySelectorAll('.fchip').forEach(b => b.addEventListener('click', () 
 $('#team').addEventListener('change', e => { state.team = e.target.value; render(); });
 $('#pushon').addEventListener('click', enablePush);
 $('#pushtest').addEventListener('click', async () => {
-  try { const r = await post('/api/push/test', {student_id: state.sid}); $('#pushmsg').className = 'msg ok'; $('#pushmsg').textContent = `Đã gửi tới ${r.sent} thiết bị.`; }
+  try { const r = await post('/api/push/test', {}); $('#pushmsg').className = 'msg ok'; $('#pushmsg').textContent = `Đã gửi tới ${r.sent} thiết bị.`; }
   catch (e) { $('#pushmsg').className = 'msg err'; $('#pushmsg').textContent = e.message; }
 });
 $('#copyics').addEventListener('click', e => copy(e.currentTarget.dataset.url || '', e.currentTarget));
 $('#sharebtn').addEventListener('click', async e => {
   try {
-    const r = await api(`/api/share?student_id=${encodeURIComponent(state.sid)}`);
+    const r = await api('/api/share');
     $('#sharemsg').className = 'msg ok'; $('#sharemsg').innerHTML = `Link: <code>${esc(r.url)}</code>`;
     if (navigator.share) { navigator.share({title: 'Lịch AI20K của mình', url: r.url}).catch(() => {}); } else { copy(r.url, e.currentTarget); }
   } catch (err) { $('#sharemsg').className = 'msg err'; $('#sharemsg').textContent = err.message; }
@@ -482,7 +621,7 @@ $('#phxform').addEventListener('submit', async e => {
   e.preventDefault();
   const msg = $('#phxmsg'); msg.className = 'msg'; msg.textContent = 'Đang tải lịch Phoenix…';
   try {
-    const r = await post('/api/phoenix', {student_id: state.sid, url: $('#phxurl').value});
+    const r = await post('/api/phoenix', {url: $('#phxurl').value});
     msg.className = 'msg ok'; msg.textContent = `Đã kết nối: ${r.events} sự kiện.`; $('#phxurl').value = '';
     loadWeek();
   } catch (err) { msg.className = 'msg err'; msg.textContent = err.message; }
@@ -494,7 +633,7 @@ $('#ingest').addEventListener('submit', async e => {
   const fd = new FormData(); fd.append('file', f);
   msg.className = 'msg'; msg.textContent = 'Đang xử lý…';
   try {
-    const r = await api('/api/ingest', {method: 'POST', body: fd});
+    const r = await api('/api/admin/ingest', {method: 'POST', body: fd});
     msg.className = 'msg ok';
     msg.textContent = r.new ? `Đã cập nhật: ${r.students} học viên, ${r.room_changes} phòng thay đổi.` : 'Bản này đã có, không có gì thay đổi.';
     if (state.sid) loadWeek();
@@ -505,4 +644,4 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').cat
 api('/api/buildings').then(b => state.buildings = b).catch(() => {});
 const shareTok = (location.hash.match(/^#share-([\w-]+)$/) || [])[1];
 if (shareTok) startShared(shareTok);
-else loadSetup().then(() => { const saved = ls.get('sid'); if (saved && state.setup && state.setup.timetable) { $('#sid').value = saved; start(saved); } });
+else loadSetup().then(() => api('/api/student/me').then(onStudent).catch(() => api('/api/auth/me').then(onStaff).catch(() => {})));

@@ -5,3 +5,5 @@ uvicorn==0.34.0
 python-multipart==0.0.20
 pytest==8.3.4
 pywebpush==2.0.3
+httpx==0.28.1  # tests only (FastAPI TestClient)
+psycopg[binary]==3.2.3  # Postgres (Neon) when DATABASE_URL is set
