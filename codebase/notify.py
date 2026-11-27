@@ -1,6 +1,9 @@
 """Web Push (VAPID) + the reminder loop.
 
-Keys: generated once into data/private/vapid_private.pem (gitignored). Subscriptions live in the private DB.
+Signing key (VAPID): VAPID_PRIVATE_KEY in .env (base64url raw P-256 key, a secret). Every machine that shares a
+database must use the same key, because each phone subscription is bound to the key it subscribed with. Without it the
+app falls back to a per-machine key file, data/private/vapid_private.pem (gitignored) — fine for one machine only.
+Print the key to put in .env: python3 scripts/vapid_key.py
 Loop (every 60 s, started by the web server):
   - deadline reminders 24 h and 1 h before each Phoenix deadline
   - class reminder 60 min before each timetable session, with the student's room
@@ -24,23 +27,41 @@ CLAIMS = {"sub": "mailto:codebusters@example.com"}
 VN = timezone(timedelta(hours=7))
 
 
+_VAPID = None
+
+
+def vapid():
+    """The signing key: VAPID_PRIVATE_KEY from the environment, else the local key file (created if missing)."""
+    global _VAPID
+    if _VAPID is None:
+        from py_vapid import Vapid01
+        raw = (os.environ.get("VAPID_PRIVATE_KEY") or "").strip()
+        if raw:
+            _VAPID = Vapid01.from_raw(raw.encode())
+        else:
+            if os.environ.get("DATABASE_URL"):
+                print("Cảnh báo: chưa có VAPID_PRIVATE_KEY trong .env nhưng đang dùng DB chung — thông báo đẩy chỉ "
+                      "hoạt động với thiết bị đăng ký qua máy này. Xem scripts/vapid_key.py.")
+            if not os.path.exists(KEY_PATH):
+                v = Vapid01()
+                v.generate_keys()
+                os.makedirs(os.path.dirname(KEY_PATH), exist_ok=True)
+                v.save_key(KEY_PATH)
+            _VAPID = Vapid01.from_file(KEY_PATH)
+    return _VAPID
+
+
 def public_key() -> str:
-    """Base64url uncompressed P-256 public key for PushManager.subscribe (creates the key pair if missing)."""
+    """Base64url uncompressed P-256 public key for PushManager.subscribe."""
     from cryptography.hazmat.primitives import serialization
-    from py_vapid import Vapid01
-    if not os.path.exists(KEY_PATH):
-        v = Vapid01()
-        v.generate_keys()
-        os.makedirs(os.path.dirname(KEY_PATH), exist_ok=True)
-        v.save_key(KEY_PATH)
-    v = Vapid01.from_file(KEY_PATH)
-    raw = v.public_key.public_bytes(serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint)
+    raw = vapid().public_key.public_bytes(serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint)
     return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
 
 
 def subscribe(con, student_id: str, sub: dict):
     with con:
-        con.execute("INSERT OR REPLACE INTO push_subs VALUES (?,?,?,?)",
+        con.execute("INSERT INTO push_subs VALUES (?,?,?,?) ON CONFLICT(endpoint) DO UPDATE SET "
+                    "student_id=excluded.student_id, sub=excluded.sub, created_at=excluded.created_at",
                     (sub["endpoint"], student_id, json.dumps(sub), datetime.now(VN).isoformat(timespec="seconds")))
 
 
@@ -51,7 +72,7 @@ def send(con, student_id: str, title: str, body: str, url: str = "/", tag: str =
     for row in con.execute("SELECT endpoint, sub FROM push_subs WHERE student_id=?", (student_id,)).fetchall():
         try:
             webpush(json.loads(row["sub"]), json.dumps({"title": title, "body": body, "url": url, "tag": tag}),
-                    vapid_private_key=KEY_PATH, vapid_claims=dict(CLAIMS))
+                    vapid_private_key=vapid(), vapid_claims=dict(CLAIMS))
             sent += 1
         except WebPushException as e:
             if e.response is not None and e.response.status_code in (404, 410):

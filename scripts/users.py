@@ -29,7 +29,7 @@ def _password():
 
 
 def _uid(con, username):
-    row = con.execute("SELECT id FROM users WHERE username=?", (username,)).fetchone()
+    row = con.execute("SELECT id FROM users WHERE lower(username)=lower(?)", (username,)).fetchone()
     if not row:
         sys.exit("Không có tài khoản %s." % username)
     return row["id"]

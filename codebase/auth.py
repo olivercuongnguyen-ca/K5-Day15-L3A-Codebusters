@@ -75,15 +75,16 @@ def create_user(con, username, role, password, display_name="", must_change=Fals
     if not USERNAME_RE.match(username):
         raise AuthError("Tên đăng nhập chỉ gồm chữ, số, dấu . _ - (3–40 ký tự).")
     _check_password_rules(password)
-    if con.execute("SELECT 1 FROM users WHERE username=?", (username,)).fetchone():
+    if con.execute("SELECT 1 FROM users WHERE lower(username)=lower(?)", (username,)).fetchone():
         raise AuthError("Tên đăng nhập đã tồn tại.", 409)
     with con:
         cur = con.execute("INSERT INTO users (username, role, display_name, student_id, pw_hash, must_change, "
-                          "created_at) VALUES (?,?,?,?,?,?,?)",
+                          "created_at) VALUES (?,?,?,?,?,?,?) RETURNING id",
                           (username, role, display_name or username, None, hash_password(password),
                            int(must_change), _now().isoformat(timespec="seconds")))
+        new_id = cur.fetchone()["id"]
     audit(con, by, "create_user", {"username": username, "role": role})
-    return cur.lastrowid
+    return new_id
 
 
 def _locked(username):
@@ -98,7 +99,7 @@ def login(con, username: str, password: str) -> str:
     key = (username or "").strip().lower()
     if _locked(key):
         raise AuthError("Nhập sai quá nhiều lần. Thử lại sau 15 phút.", 429)
-    u = con.execute("SELECT * FROM users WHERE username=?", ((username or "").strip(),)).fetchone()
+    u = con.execute("SELECT * FROM users WHERE lower(username)=lower(?)", ((username or "").strip(),)).fetchone()
     ok = verify_password(password or "", u["pw_hash"] if u else _DUMMY)
     if not u or not ok or u["disabled"]:
         _fails.setdefault(key, []).append(time.time())

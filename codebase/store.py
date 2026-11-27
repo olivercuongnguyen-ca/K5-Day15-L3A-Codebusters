@@ -1,4 +1,5 @@
-"""The app's own database (SQLite, stdlib). Lives at data/private/app.db — gitignored, never committed.
+"""The app's own database. Postgres when DATABASE_URL is set (shared, e.g. Neon); otherwise SQLite at
+data/private/app.db (gitignored) or APP_DB. Tests always pass an explicit SQLite path. See codebase/db.py.
 
 Tables
     tkb_versions     one row per distinct timetable attachment received (hash, received_at, source)
@@ -11,10 +12,13 @@ Tables
 import json
 import re
 import os
-import sqlite3
 from datetime import datetime, timedelta, timezone
 
+import db
+from ai import load_env
 from tkb import parse as parse_tkb
+
+load_env()  # DATABASE_URL may live in .env
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.environ.get("APP_DB") or os.path.join(ROOT, "data", "private", "app.db")
@@ -49,6 +53,15 @@ CREATE TABLE IF NOT EXISTS duty_changes (id TEXT PRIMARY KEY, team TEXT NOT NULL
     start TEXT, "end" TEXT, cancelled INT DEFAULT 0, note TEXT, updated_by INT, updated_at TEXT);
 CREATE TABLE IF NOT EXISTS audit_log (at TEXT, user_id INT, action TEXT, detail TEXT);
 """
+# Postgres: same tables; students already has the team columns, users.id is generated, usernames are unique
+# ignoring case (queries compare lower(username)).
+SCHEMA_PG = (SCHEMA.replace("id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE COLLATE NOCASE,",
+                            "id SERIAL PRIMARY KEY, username TEXT NOT NULL,")
+             .replace("phoenix_synced_at TEXT);", "phoenix_synced_at TEXT, team TEXT, team_source TEXT);")
+             + "CREATE UNIQUE INDEX IF NOT EXISTS users_username_ci ON users (lower(username));\n"
+             # databases created by an older version of this app
+             + "ALTER TABLE students ADD COLUMN IF NOT EXISTS team TEXT;\n"
+             + "ALTER TABLE students ADD COLUMN IF NOT EXISTS team_source TEXT;\n")
 TEAM_RE = re.compile(r"Nhóm\s*(\d+)", re.I)
 
 
@@ -100,11 +113,20 @@ def set_student_team(con, student_id: str, team) -> str:
     return con.execute("SELECT team FROM students WHERE id=?", (student_id,)).fetchone()["team"]
 
 
+def _setup_pg(con):
+    con.executescript(SCHEMA_PG)
+    for r in con.execute("SELECT DISTINCT e.student_id FROM phoenix_events e JOIN students s ON s.id=e.student_id "
+                         "WHERE s.team IS NULL AND s.team_source IS NULL").fetchall():
+        with con:
+            _set_team(con, r["student_id"])
+
+
 def connect(path=None):
-    path = path or DB_PATH
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    con = sqlite3.connect(path, check_same_thread=False)
-    con.row_factory = sqlite3.Row
+    """An explicit path is always SQLite (tests, scripts). Otherwise Postgres if DATABASE_URL is set, else SQLite."""
+    url = None if path else db.database_url()
+    if url:
+        return db.postgres(url, on_new=_setup_pg)
+    con = db.sqlite(path or DB_PATH)
     con.executescript(SCHEMA)
     _migrate(con)
     return con
@@ -181,23 +203,20 @@ def ingest_tkb(con, html: str, source: str = "upload", received_at: str = None) 
         con.execute("INSERT INTO tkb_versions VALUES (?,?,?,?)",
                     (version, received_at, source, json.dumps(data["holidays"], ensure_ascii=False)))
         con.execute("DELETE FROM sessions")
-        for cls, g in data["groups"].items():
-            for s in g["sessions"]:
-                con.execute("INSERT INTO sessions VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-                            (s["id"], cls, s["index"], s["date"], s["slot"], s["kind"], s["name"], s["start"],
-                             s["end"], json.dumps(s["rooms"]), version))
+        con.executemany("INSERT INTO sessions VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                        [(x["id"], cls, x["index"], x["date"], x["slot"], x["kind"], x["name"], x["start"], x["end"],
+                          json.dumps(x["rooms"]), version)
+                         for cls, g in data["groups"].items() for x in g["sessions"]])
         con.execute("DELETE FROM student_rooms")
-        changes = 0
-        for sid, st in data["students"].items():
-            con.execute("INSERT INTO students (id, class, short_name) VALUES (?,?,?) "
-                        "ON CONFLICT(id) DO UPDATE SET class=excluded.class, short_name=excluded.short_name",
-                        (sid, st["class"], st["short_name"]))
-            for sess_id, rm in st["rooms"].items():
-                con.execute("INSERT INTO student_rooms VALUES (?,?,?)", (sid, sess_id, rm))
-                prev = old.get((sid, sess_id))
-                if old and prev != rm:
-                    con.execute("INSERT INTO room_changes VALUES (?,?,?,?,?)", (version, sid, sess_id, prev, rm))
-                    changes += 1
+        con.executemany("INSERT INTO students (id, class, short_name) VALUES (?,?,?) ON CONFLICT(id) DO UPDATE "
+                        "SET class=excluded.class, short_name=excluded.short_name",
+                        [(sid, st["class"], st["short_name"]) for sid, st in data["students"].items()])
+        rows = [(sid, sess_id, rm) for sid, st in data["students"].items() for sess_id, rm in st["rooms"].items()]
+        con.executemany("INSERT INTO student_rooms VALUES (?,?,?)", rows)
+        changed = [(version, sid, sess_id, old.get((sid, sess_id)), rm) for sid, sess_id, rm in rows
+                   if old and old.get((sid, sess_id)) != rm]
+        con.executemany("INSERT INTO room_changes VALUES (?,?,?,?,?)", changed)
+        changes = len(changed)
     return {"version": version, "new": True, "students": len(data["students"]), "room_changes": changes}
 
 
@@ -211,10 +230,9 @@ def ingest_phoenix(con, student_id: str, events: list) -> int:
     """Replace a student's Phoenix events with a fresh copy of the feed."""
     with con:
         con.execute("DELETE FROM phoenix_events WHERE student_id=?", (student_id,))
-        for e in events:
-            con.execute("INSERT INTO phoenix_events VALUES (?,?,?,?,?,?,?,?,?,?)",
-                        (student_id, e["uid"], e["category"], e["label"], e["title"], e["start"], e["end"],
-                         int(e["is_deadline"]), e["location"], e["url"]))
+        con.executemany("INSERT INTO phoenix_events VALUES (?,?,?,?,?,?,?,?,?,?)",
+                        [(student_id, e["uid"], e["category"], e["label"], e["title"], e["start"], e["end"],
+                          int(e["is_deadline"]), e["location"], e["url"]) for e in events])
         con.execute("UPDATE students SET phoenix_synced_at=? WHERE id=?",
                     (datetime.now(VN).isoformat(timespec="seconds"), student_id))
         _set_team(con, student_id)

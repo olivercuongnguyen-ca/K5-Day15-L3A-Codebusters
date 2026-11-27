@@ -44,7 +44,7 @@ def _can(user, team):
 def _phoenix_duties(con):
     """Distinct Phoenix duties (same UID appears once per student in the team) -> {uid: {team, title, start, end}}."""
     out = {}
-    for r in con.execute("SELECT uid, title, start, \"end\", count(*) n FROM phoenix_events "
+    for r in con.execute("SELECT uid, min(title) title, min(start) start, min(\"end\") \"end\" FROM phoenix_events "
                          "WHERE category='mentor_duty' GROUP BY uid"):
         out[r["uid"]] = {"team": team_of(r["title"]), "title": r["title"], "start": r["start"], "end": r["end"]}
     return out
