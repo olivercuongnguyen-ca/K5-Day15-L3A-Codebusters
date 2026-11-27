@@ -1,4 +1,25 @@
+"use client";
+
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { cn } from "@/lib/cn";
+
+type ViewBox = [number, number, number, number];
+const FULL: ViewBox = [60, 30, 1580, 1920];
+const CENTRAL: ViewBox = [280, 560, 820, 700]; // parking lot + A/B/C/E/G/H/I
+const MIN_W = 200;
+
+/** A view of about 820×700 around the building, or the central area when there is none. */
+function viewAround(meta?: { anchorX: number; anchorTopY: number }): ViewBox {
+  if (!meta) return CENTRAL;
+  const [, , w, h] = CENTRAL;
+  return [meta.anchorX - w / 2, meta.anchorTopY - h / 2 + 60, w, h];
+}
+
+function clampView([x, y, w, h]: ViewBox): ViewBox {
+  const nx = Math.min(Math.max(x, FULL[0] - w / 2), FULL[0] + FULL[2] - w / 2);
+  const ny = Math.min(Math.max(y, FULL[1] - h / 2), FULL[1] + FULL[3] - h / 2);
+  return [nx, ny, w, h];
+}
 
 export interface VinUniCampusMapSvgProps {
   activeBuilding?: string;
@@ -39,6 +60,82 @@ export function VinUniCampusMapSvg({
     ? BUILDING_META[normalizedActive]
     : undefined;
 
+  // ---- zoom & pan: buttons, drag, wheel, pinch ----
+  const startView = viewAround(activeMeta);
+  const [view, setView] = useState<ViewBox>(startView);
+  const [viewFor, setViewFor] = useState(normalizedActive);
+  if (viewFor !== normalizedActive) {  // another event opened: recentre on its building
+    setViewFor(normalizedActive);
+    setView(startView);
+  }
+  const svgRef = useRef<SVGSVGElement>(null);
+  const pointers = useRef(new Map<number, { x: number; y: number }>());
+  const pinch = useRef(0);
+
+  function zoom(factor: number, cx?: number, cy?: number) {
+    setView(([x, y, w, h]) => {
+      const nw = w * factor;
+      const nh = h * factor;
+      if (nw < MIN_W || (factor > 1 && nw > FULL[2] * 1.3 && nh > FULL[3] * 1.3)) return [x, y, w, h];
+      const px = cx ?? x + w / 2;
+      const py = cy ?? y + h / 2;
+      return clampView([px - (px - x) * factor, py - (py - y) * factor, nw, nh]);
+    });
+  }
+
+  function toSvg(clientX: number, clientY: number) {
+    const svg = svgRef.current;
+    const ctm = svg?.getScreenCTM();
+    if (!svg || !ctm) return { x: 0, y: 0 };
+    const p = new DOMPoint(clientX, clientY).matrixTransform(ctm.inverse());
+    return { x: p.x, y: p.y };
+  }
+
+  useEffect(() => {  // wheel zoom needs a non-passive listener to keep the page from scrolling
+    const svg = svgRef.current;
+    if (!svg) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const p = toSvg(e.clientX, e.clientY);
+      zoom(e.deltaY > 0 ? 1.15 : 1 / 1.15, p.x, p.y);
+    };
+    svg.addEventListener("wheel", onWheel, { passive: false });
+    return () => svg.removeEventListener("wheel", onWheel);
+  });
+
+  function onPointerDown(e: ReactPointerEvent<SVGSVGElement>) {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    pinch.current = 0;
+  }
+
+  function onPointerMove(e: ReactPointerEvent<SVGSVGElement>) {
+    const prev = pointers.current.get(e.pointerId);
+    if (!prev) return;
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.current.size === 2) {
+      const [a, b] = [...pointers.current.values()];
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (pinch.current) {
+        const mid = toSvg((a.x + b.x) / 2, (a.y + b.y) / 2);
+        zoom(pinch.current / d, mid.x, mid.y);
+      }
+      pinch.current = d;
+      return;
+    }
+    const svg = svgRef.current;
+    if (!svg) return;
+    setView(([x, y, w, h]) => {
+      const k = Math.max(w / svg.clientWidth, h / svg.clientHeight);
+      return clampView([x - (e.clientX - prev.x) * k, y - (e.clientY - prev.y) * k, w, h]);
+    });
+  }
+
+  function onPointerUp(e: ReactPointerEvent<SVGSVGElement>) {
+    pointers.current.delete(e.pointerId);
+    pinch.current = 0;
+  }
+
   function buildingClass(id: string): string {
     if (!normalizedActive) return "cm-b";
     return normalizedActive === id ? "cm-b on" : "cm-b cm-dim";
@@ -50,11 +147,16 @@ export function VinUniCampusMapSvg({
 
   return (
     <div className={cn("w-full flex flex-col gap-2", className)}>
-      <div className="w-full rounded-[14px] overflow-hidden border border-border bg-[#FBF2E4]">
+      <div className="relative w-full rounded-[14px] overflow-hidden border border-border bg-[#FBF2E4]">
         <svg
+          ref={svgRef}
           xmlns="http://www.w3.org/2000/svg"
-          viewBox="60 30 1580 1920"
-          className="cmap w-full h-auto block select-none"
+          viewBox={view.join(" ")}
+          className="cmap w-full h-[280px] md:h-[340px] block select-none touch-none cursor-grab active:cursor-grabbing"
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
           role="img"
           aria-label={ariaLabel}
           preserveAspectRatio="xMidYMid meet"
@@ -379,7 +481,33 @@ export function VinUniCampusMapSvg({
             </g>
           ) : null}
         </svg>
+        <div className="absolute right-2 bottom-2 flex items-center gap-1.5" role="group" aria-label="Phóng to, thu nhỏ bản đồ">
+          {[
+            { label: "Phóng to", text: "+", onClick: () => zoom(1 / 1.4) },
+            { label: "Thu nhỏ", text: "−", onClick: () => zoom(1.4) },
+          ].map((b) => (
+            <button
+              key={b.label}
+              type="button"
+              aria-label={b.label}
+              onClick={b.onClick}
+              className="w-9 h-9 rounded-full bg-surface border border-border shadow-card-sm text-[18px] font-semibold text-text-primary inline-flex items-center justify-center cursor-pointer hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              {b.text}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setView(view[2] >= FULL[2] ? startView : FULL)}
+            className="min-h-9 px-3 rounded-full bg-surface border border-border shadow-card-sm text-[12px] font-medium text-text-primary cursor-pointer hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            {view[2] >= FULL[2] ? "Về tòa nhà" : "Toàn trường"}
+          </button>
+        </div>
       </div>
+      <p className="px-1 text-[11px] sm:text-[12px] text-text-secondary">
+        Kéo để di chuyển · chụm hai ngón hoặc cuộn chuột để phóng to, thu nhỏ.
+      </p>
 
       {/* Compact Legend */}
       <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-[11px] sm:text-[12px] text-text-secondary">

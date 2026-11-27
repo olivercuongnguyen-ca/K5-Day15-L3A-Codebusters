@@ -81,7 +81,14 @@ export function PwaProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    if ("serviceWorker" in navigator) {
+    // Development: no service worker. Its cache-first rule for /_next/static would keep serving old code, because
+    // dev chunk names do not change between edits. Remove one left over from an earlier session.
+    if (process.env.NODE_ENV !== "production" && "serviceWorker" in navigator) {
+      void navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach((r) => void r.unregister()));
+      void caches?.keys().then((keys) => keys.filter((k) => k.startsWith("nhiphoc-static-")).forEach((k) => void caches.delete(k)));
+    }
+
+    if (process.env.NODE_ENV === "production" && "serviceWorker" in navigator) {
       navigator.serviceWorker.addEventListener(
         "controllerchange",
         handleControllerChange,

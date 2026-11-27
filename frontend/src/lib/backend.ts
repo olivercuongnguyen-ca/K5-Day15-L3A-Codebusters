@@ -199,7 +199,7 @@ export function toScheduleEvent(i: BackendItem, w: WeekResponse): ScheduleEvent 
     description,
     sources,
     updatedAt: updated ? `Cập nhật ${dm(updated.slice(0, 10))}` : "",
-    ctaLabel: i.url ? (i.source === "team" ? "Vào phòng họp" : "Mở link buổi") : i.source === "tkb" ? "Xin nghỉ buổi này" : "Đóng",
+    ctaLabel: i.url ? (i.source === "team" ? "Vào phòng họp" : "Mở link buổi") : "Xem chi tiết",
     roomCode: room,
     allRooms: (i.class_rooms ?? []).map((r) => r.code + (r.backup ? "*" : "")),
     groupId: (w.class as ScheduleEvent["groupId"]) ?? undefined,

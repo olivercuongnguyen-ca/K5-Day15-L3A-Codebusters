@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { parseSimpleRoom, type ScheduleEvent } from "@/data/mock-schedule";
 import { VinUniCampusMapSvg } from "./vinuni-campus-map-svg";
 import {
@@ -86,51 +88,30 @@ export function EventDetailSheet({
         ) : null
       }
       footer={
-        event ? (
+        event && (event.joinUrl || (event.category === "session" && onRequestLeave)) ? (
           <div className="flex flex-col gap-2">
-            <Button
-              variant="primary"
-              size="lg"
-              fullWidth
-              leftIcon={
-                event.category === "deadline" ? (
-                  <ExternalLinkIcon size={18} />
-                ) : (
-                  <VideoIcon size={18} />
-                )
-              }
-              onClick={() => onDemoAction(event.ctaLabel)}
-            >
-              {event.ctaLabel}
-            </Button>
-            <div
-              className={
-                event.category === "session" && onRequestLeave
-                  ? "grid grid-cols-1 sm:grid-cols-2 gap-2"
-                  : "flex"
-              }
-            >
-              {event.category === "session" && onRequestLeave ? (
-                <Button
-                  variant="secondary"
-                  size="md"
-                  fullWidth
-                  leftIcon={<MailIcon size={16} />}
-                  onClick={() => onRequestLeave(event)}
-                >
-                  Xin nghỉ buổi này bằng AI
-                </Button>
-              ) : null}
+            {event.joinUrl ? (
               <Button
-                variant="outline"
-                size="md"
+                variant="primary"
+                size="lg"
                 fullWidth
-                leftIcon={<ExternalLinkIcon size={16} />}
-                onClick={() => onDemoAction("Xem nguồn gốc")}
+                leftIcon={<VideoIcon size={18} />}
+                onClick={() => onDemoAction(event.ctaLabel)}
               >
-                Xem nguồn gốc
+                {event.ctaLabel}
               </Button>
-            </div>
+            ) : null}
+            {event.category === "session" && onRequestLeave ? (
+              <Button
+                variant="primary"
+                size="lg"
+                fullWidth
+                leftIcon={<MailIcon size={18} />}
+                onClick={() => onRequestLeave(event)}
+              >
+                Xin nghỉ buổi này bằng AI
+              </Button>
+            ) : null}
           </div>
         ) : null
       }
@@ -266,6 +247,14 @@ export function EventDetailSheet({
                 </Badge>
               ))}
             </div>
+            <Link
+              href="/settings#nguon-lich"
+              onClick={onClose}
+              className="inline-flex items-center gap-1.5 self-start min-h-9 text-[13px] font-medium text-secondary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary rounded"
+            >
+              <ExternalLinkIcon size={15} />
+              Xem nguồn lịch
+            </Link>
           </div>
         </>
       ) : null}

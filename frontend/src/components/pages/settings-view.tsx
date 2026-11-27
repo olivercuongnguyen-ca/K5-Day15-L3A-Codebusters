@@ -3,9 +3,7 @@
 import { useEffect, useState } from "react";
 import type { CalendarSource } from "@/data/mock-schedule";
 import { api, post, type StudentMe } from "@/lib/backend";
-import { cn } from "@/lib/cn";
 import {
-  AlertCircleIcon,
   Badge,
   Button,
   CalendarIcon,
@@ -25,6 +23,14 @@ import {
   SourceCardSkeleton,
 } from "@/components/ui";
 import { useApp, useHydrated } from "@/components/app/app-provider";
+
+const PHOENIX_URL = "https://portal-cohort5.edufun.ai/";
+const PHOENIX_STEPS = [
+  "Mở Phoenix và đăng nhập.",
+  "Vào “Lịch sự kiện”.",
+  "Bấm “Nhắc lịch qua Google Calendar”.",
+  "Sao chép link .ics ở đó, dán vào ô bên dưới rồi bấm Kết nối.",
+];
 
 const GOOGLE_CALENDAR_STEPS = [
   "Mở Google Calendar trên máy tính.",
@@ -73,8 +79,6 @@ export function SettingsView() {
   const {
     currentUser,
     showToast,
-    preferences,
-    updatePreference,
     schedule,
     student,
     staff,
@@ -109,7 +113,6 @@ export function SettingsView() {
     useState<CalendarSource | null>(null);
   const [icsUrl, setIcsUrl] = useState("");
   const [icsTouched, setIcsTouched] = useState(false);
-  const [showSkeletonPreview, setShowSkeletonPreview] = useState(false);
 
   const trimmedIcs = icsUrl.trim();
   const icsInvalid =
@@ -146,7 +149,7 @@ export function SettingsView() {
       document.getElementById("google-calendar")?.scrollIntoView({ behavior: "smooth" });
       return;
     }
-    setDemoDialogSource(source);
+    showToast(source.lastUpdatedLabel, "info");  // timetable: when the current version arrived
   }
 
   async function handleIcsSubmit() {
@@ -271,114 +274,6 @@ export function SettingsView() {
         </section>
       ) : null}
 
-      {/* Display Preferences */}
-      <section
-        aria-label="Tùy chọn hiển thị lịch"
-        className="flex flex-col gap-2 md:gap-2.5"
-      >
-        <h2 className="text-[12px] md:text-[13px] leading-[18px] font-medium text-text-secondary px-1">
-          Tùy chọn hiển thị lịch
-        </h2>
-
-        <div className="bg-surface border border-border rounded-[20px] md:rounded-[24px] divide-y divide-border overflow-hidden shadow-card-sm">
-          <div className="p-3.5 sm:p-5 flex items-center justify-between gap-3 md:gap-4">
-            <div className="flex flex-col gap-0.5">
-              <span
-                id="pref-deadline-label"
-                className="text-[14px] leading-[20px] md:text-[15px] md:leading-[22px] font-medium text-text-primary"
-              >
-                Hiện hạn nộp trong timeline
-              </span>
-              <span className="text-[12px] leading-[17px] md:text-[13px] md:leading-[19px] text-text-secondary">
-                Hiển thị bài tập đến hạn cùng dòng thời gian các buổi học
-              </span>
-            </div>
-
-            <button
-              type="button"
-              role="switch"
-              aria-checked={preferences.showDeadlinesInTimeline}
-              aria-labelledby="pref-deadline-label"
-              onClick={() => {
-                const next = !preferences.showDeadlinesInTimeline;
-                updatePreference("showDeadlinesInTimeline", next);
-                showToast(
-                  next
-                    ? "Đã bật hiển thị hạn nộp trong timeline"
-                    : "Đã ẩn hạn nộp khỏi timeline",
-                  "info",
-                );
-              }}
-              className={cn(
-                "relative inline-flex items-center w-12 h-7 rounded-full border transition-colors duration-[180ms] shrink-0 cursor-pointer",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
-                preferences.showDeadlinesInTimeline
-                  ? "bg-primary border-primary"
-                  : "bg-background border-border",
-              )}
-            >
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "w-5 h-5 rounded-full transition-transform duration-[180ms] shadow-sm",
-                  preferences.showDeadlinesInTimeline
-                    ? "translate-x-6 bg-on-primary"
-                    : "translate-x-1 bg-text-secondary",
-                )}
-              />
-            </button>
-          </div>
-
-          <div className="p-3.5 sm:p-5 flex items-center justify-between gap-3 md:gap-4">
-            <div className="flex flex-col gap-0.5">
-              <span
-                id="pref-merge-label"
-                className="text-[14px] leading-[20px] md:text-[15px] md:leading-[22px] font-medium text-text-primary"
-              >
-                Gộp sự kiện trùng nguồn
-              </span>
-              <span className="text-[12px] leading-[17px] md:text-[13px] md:leading-[19px] text-text-secondary">
-                Chỉ hiển thị một mục khi Outlook và Phoenix trùng khung giờ
-              </span>
-            </div>
-
-            <button
-              type="button"
-              role="switch"
-              aria-checked={preferences.mergeDuplicateSources}
-              aria-labelledby="pref-merge-label"
-              onClick={() => {
-                const next = !preferences.mergeDuplicateSources;
-                updatePreference("mergeDuplicateSources", next);
-                showToast(
-                  next
-                    ? "Đã bật gộp sự kiện trùng nguồn"
-                    : "Đã tắt gộp sự kiện trùng nguồn",
-                  "info",
-                );
-              }}
-              className={cn(
-                "relative inline-flex items-center w-12 h-7 rounded-full border transition-colors duration-[180ms] shrink-0 cursor-pointer",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
-                preferences.mergeDuplicateSources
-                  ? "bg-primary border-primary"
-                  : "bg-background border-border",
-              )}
-            >
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "w-5 h-5 rounded-full transition-transform duration-[180ms] shadow-sm",
-                  preferences.mergeDuplicateSources
-                    ? "translate-x-6 bg-on-primary"
-                    : "translate-x-1 bg-text-secondary",
-                )}
-              />
-            </button>
-          </div>
-        </div>
-      </section>
-
       {/* Integrated Sources Section (#nguon-lich) */}
       <section
         id="nguon-lich"
@@ -419,7 +314,7 @@ export function SettingsView() {
           </span>
         </div>
 
-        {showSkeletonPreview ? (
+        {schedule.sources.length === 0 ? (
           <div className="flex flex-col gap-2.5 md:gap-3" aria-busy="true">
             <SourceCardSkeleton />
             <SourceCardSkeleton />
@@ -477,30 +372,6 @@ export function SettingsView() {
           </div>
         )}
 
-        <div className="bg-surface border border-border rounded-[20px] p-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="success" dot size="sm">
-              Đã kết nối
-            </Badge>
-            <Badge variant="warning" size="sm">
-              Cần kết nối lại
-            </Badge>
-            <Badge
-              variant="danger"
-              size="sm"
-              icon={<AlertCircleIcon size={13} />}
-            >
-              Cập nhật thất bại
-            </Badge>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowSkeletonPreview((prev) => !prev)}
-          >
-            {showSkeletonPreview ? "Hiện nguồn lịch" : "Xem trạng thái tải"}
-          </Button>
-        </div>
       </section>
 
       {/* Google Calendar Integration Guide */}
@@ -677,7 +548,7 @@ export function SettingsView() {
         size="sm"
         onOpenChange={setIcsSheetOpen}
         title="Kết nối lịch Phoenix"
-        subtitle="Trên Phoenix: Lịch sự kiện → Nhắc lịch qua Google Calendar → sao chép link .ics"
+        subtitle="Kết nối bằng link .ics của Phoenix để thấy workshop, mentor duty và hạn nộp"
         footer={
           <Button
             variant="primary"
@@ -689,6 +560,30 @@ export function SettingsView() {
           </Button>
         }
       >
+        <div className="p-3.5 rounded-[16px] bg-background border border-border flex flex-col gap-2.5">
+          <h3 className="text-[14px] leading-[20px] font-semibold text-text-primary">Lấy link trên Phoenix</h3>
+          <ol className="flex flex-col gap-2">
+            {PHOENIX_STEPS.map((step, index) => (
+              <li key={step} className="flex items-start gap-2.5">
+                <span className="w-5 h-5 rounded-full bg-sage-background text-on-sage text-[11px] font-semibold inline-flex items-center justify-center shrink-0 mt-0.5 tabular-nums">
+                  {index + 1}
+                </span>
+                <span className="text-[13px] leading-[19px] text-text-primary">{step}</span>
+              </li>
+            ))}
+          </ol>
+          <a
+            href={PHOENIX_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-1.5 self-start min-h-9 px-4 rounded-full border border-border bg-surface text-[13px] font-medium text-text-primary hover:bg-surface-subtle transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            Mở Phoenix
+          </a>
+          <p className="text-[12px] leading-[17px] text-text-secondary">
+            Ai có link này đều xem được lịch Phoenix của bạn. Nếu lỡ để lộ, bấm “Tạo link mới” trên Phoenix rồi dán lại link mới ở đây.
+          </p>
+        </div>
         <Input
           label="Link lịch Phoenix (.ics)"
           type="url"

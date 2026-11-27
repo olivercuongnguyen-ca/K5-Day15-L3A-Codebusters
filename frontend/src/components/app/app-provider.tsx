@@ -251,11 +251,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ? `Đồng bộ ${dm(latestWeek.phoenix_synced_at.slice(0, 10))} lúc ${latestWeek.phoenix_synced_at.slice(11, 16)} · tự cập nhật mỗi giờ`
           : "Dán link lịch Phoenix để kết nối", actionLabel: latestWeek.phoenix_linked ? "Đổi link" : "Kết nối",
       },
-      {
-        id: "ics", name: "Đồng bộ ra lịch của bạn", description: "Đăng ký lịch hợp nhất trong Google Calendar hoặc Outlook",
-        status: "connected", statusLabel: "Sẵn sàng", lastUpdatedLabel: "Link .ics riêng, cập nhật mỗi giờ",
-        actionLabel: "Lấy link",
-      },
     ] : [];
     return {
       loading: loadingCount > 0,
