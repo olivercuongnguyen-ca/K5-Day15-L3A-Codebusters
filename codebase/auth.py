@@ -186,6 +186,83 @@ def set_mentor_teams(con, user_id: int, teams: list, by: int):
     return clean
 
 
+# ---- Students: a password only to schedule team meetings ----
+STUDENT_PREFIX = "student:"  # lockout key space, so a student ID never collides with a staff username
+
+
+def student_has_password(con, student_id) -> bool:
+    return con.execute("SELECT 1 FROM student_accounts WHERE student_id=?", (student_id,)).fetchone() is not None
+
+
+def student_set_password(con, student_id: str, password: str):
+    """First time only: the ID must be in the timetable and have no password yet. An admin can reset it."""
+    if not con.execute("SELECT 1 FROM students WHERE id=?", (student_id,)).fetchone():
+        raise AuthError("Không tìm thấy mã học viên trong thời khoá biểu hiện tại.", 404)
+    if student_has_password(con, student_id):
+        raise AuthError("Mã học viên này đã có mật khẩu. Hãy đăng nhập, hoặc nhờ giáo vụ đặt lại.", 409)
+    _check_password_rules(password)
+    with con:
+        con.execute("INSERT INTO student_accounts VALUES (?,?,?,?)",
+                    (student_id, hash_password(password), 0, _now().isoformat(timespec="seconds")))
+
+
+def student_login(con, student_id: str, password: str) -> str:
+    key = STUDENT_PREFIX + student_id.lower()
+    if _locked(key):
+        raise AuthError("Nhập sai quá nhiều lần. Thử lại sau 15 phút.", 429)
+    row = con.execute("SELECT pw_hash FROM student_accounts WHERE student_id=?", (student_id,)).fetchone()
+    if not verify_password(password or "", row["pw_hash"] if row else _DUMMY) or not row:
+        _fails.setdefault(key, []).append(time.time())
+        raise AuthError("Sai mã học viên hoặc mật khẩu.", 401)
+    _fails.pop(key, None)
+    token, now = secrets.token_urlsafe(32), _now()
+    with con:
+        con.execute("DELETE FROM student_sessions WHERE expires_at < ?", (now.isoformat(),))
+        con.execute("INSERT INTO student_sessions VALUES (?,?,?,?)", (_h(token), student_id, now.isoformat(),
+                                                                     (now + timedelta(days=SESSION_DAYS)).isoformat()))
+    return token
+
+
+def student_for_token(con, token: str):
+    """(student_id, must_change) for a valid student session, else None."""
+    if not token:
+        return None
+    row = con.execute("SELECT s.student_id, a.must_change FROM student_sessions s JOIN student_accounts a "
+                      "ON a.student_id=s.student_id WHERE s.token_hash=? AND s.expires_at > ?",
+                      (_h(token), _now().isoformat())).fetchone()
+    return (row["student_id"], bool(row["must_change"])) if row else None
+
+
+def student_logout(con, token: str):
+    with con:
+        con.execute("DELETE FROM student_sessions WHERE token_hash=?", (_h(token or ""),))
+
+
+def student_change_password(con, student_id, old, new, keep_token=None):
+    row = con.execute("SELECT pw_hash FROM student_accounts WHERE student_id=?", (student_id,)).fetchone()
+    if not row or not verify_password(old or "", row["pw_hash"]):
+        raise AuthError("Mật khẩu hiện tại không đúng.", 401)
+    _check_password_rules(new)
+    with con:
+        con.execute("UPDATE student_accounts SET pw_hash=?, must_change=0 WHERE student_id=?",
+                    (hash_password(new), student_id))
+        con.execute("DELETE FROM student_sessions WHERE student_id=? AND token_hash<>?",
+                    (student_id, _h(keep_token or "")))
+
+
+def student_reset_password(con, student_id, by) -> str:
+    """Admin reset: one-time temporary password the student must change before scheduling again."""
+    if not student_has_password(con, student_id):
+        raise AuthError("Học viên này chưa đặt mật khẩu.", 404)
+    temp = secrets.token_urlsafe(9)
+    with con:
+        con.execute("UPDATE student_accounts SET pw_hash=?, must_change=1 WHERE student_id=?",
+                    (hash_password(temp), student_id))
+        con.execute("DELETE FROM student_sessions WHERE student_id=?", (student_id,))
+    audit(con, by, "reset_student_password", {"student_id": student_id})
+    return temp
+
+
 def list_users(con, role=None) -> list:
     q = "SELECT id, username, role, display_name, must_change, disabled, created_at FROM users"
     rows = con.execute(q + (" WHERE role=?" if role else "") + " ORDER BY role, username", (role,) if role else ())

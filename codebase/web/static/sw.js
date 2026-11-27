@@ -1,6 +1,6 @@
 // Service worker: offline shell + push notifications.
-const CACHE = 'ai20k-v13';
-const SHELL = ['/', '/static/app.css?v=13', '/static/app.js?v=13', '/manifest.webmanifest', '/static/icons/icon-192.png', '/static/campus-map.svg?v=2'];
+const CACHE = 'ai20k-v15';
+const SHELL = ['/', '/static/app.css?v=15', '/static/app.js?v=15', '/manifest.webmanifest', '/static/icons/icon-192.png', '/static/campus-map.svg?v=2'];
 
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener('activate', e => {

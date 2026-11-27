@@ -65,7 +65,6 @@ def test_student_enters_with_id_only(env):
     s1 = student(app, "sv0001")  # lower-case ID is normalised, no password
     w = s1.get("/api/week?monday=2026-11-23").json()
     assert w["student_id"] == "SV0001" and w["team"] == "Nhóm 7"  # guessed from the Phoenix feed
-    assert s1.get("/api/summary?monday=2026-11-23").status_code == 200
     # students cannot reach admin or mentor routes
     assert s1.get("/api/admin/users").status_code == 401
     assert s1.get("/api/mentor/duties").status_code == 401

@@ -26,6 +26,10 @@ The **graded AI slice** is the leave-request workflow in `codebase/agent.py` (se
   Only admins and mentors sign in; students have no account: they enter their student ID (+ optional team, editable
   in settings; a typed team beats the Phoenix guess), kept in a plain cookie. First admin:
   `python3 scripts/users.py create-admin --username <name>`. Route list: top of `codebase/web/server.py`, or `/docs`.
+- Team meetings (`codebase/meetings.py`): a student signs in with a password (only for this; tables
+  `student_accounts`, `student_sessions`) to schedule; teammates see link + passcode with their ID only and get a push.
+  Suggestions = slots with no REQUIRED item for any teammate (class sessions, team mentor duty, other meetings);
+  workshops / office hours only flag an overlap.
 - Phoenix feed URLs are secrets. Never print, log, commit, or send them to the model.
 
 ## Hard rules (in addition to AGENTS.md)

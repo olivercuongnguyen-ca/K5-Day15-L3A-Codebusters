@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="Lịch AI20K">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="/static/app.css?v=13">
+<link rel="stylesheet" href="/static/app.css?v=15">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -119,6 +119,7 @@
       <button class="fchip on" data-f="class" aria-pressed="true"><i class="sw lec"></i>Lớp học</button>
       <button class="fchip on" data-f="event" aria-pressed="true"><i class="sw phx"></i>Sự kiện</button>
       <button class="fchip on" data-f="duty" aria-pressed="true"><i class="sw duty"></i>Mentor duty</button>
+      <button class="fchip on" data-f="meeting" aria-pressed="true"><i class="sw meet"></i>Họp nhóm</button>
       <button class="fchip on" data-f="deadline" aria-pressed="true"><i class="sw dl"></i>Hạn nộp</button>
       <label class="sr" for="team">Lọc theo team</label>
       <select id="team" class="teamsel"><option value="">Mọi team</option></select>
@@ -134,12 +135,10 @@
       <ol id="cdlist" class="cdlist"></ol>
     </section>
 
-    <section id="summary" class="card summary" aria-labelledby="sumh">
-      <div class="sumhead">
-        <h3 id="sumh"><svg class="ic"><use href="#i-spark"/></svg>Tuần này mình còn cần làm gì</h3>
-        <button class="btn ghost sm" id="sumbtn" type="button">Tóm tắt bằng AI</button>
-      </div>
-      <div id="sumbody" class="muted">Bấm để AI đọc phần còn lại của tuần (từ bây giờ) và liệt kê việc còn phải làm.</div>
+    <section id="meetcard" class="card" aria-labelledby="meeth" hidden>
+      <h3 id="meeth"><svg class="ic"><use href="#i-video"/></svg>Họp nhóm</h3>
+      <p class="muted" id="meetstate"></p>
+      <div class="actions"><button class="btn primary" id="meetopen" type="button"><svg class="ic"><use href="#i-video"/></svg>Đặt lịch họp nhóm</button></div>
     </section>
 
     <section id="caidat" class="tools">
@@ -209,11 +208,48 @@
 
 <nav class="tabbar" id="tabbar" hidden aria-label="Điều hướng">
   <a href="#lich"><svg class="ic"><use href="#i-cal"/></svg>Lịch</a>
-  <a href="#summary"><svg class="ic"><use href="#i-spark"/></svg>Việc còn lại</a>
+  <a href="#meetcard"><svg class="ic"><use href="#i-video"/></svg>Họp nhóm</a>
   <a href="#caidat"><svg class="ic"><use href="#i-gear"/></svg>Cài đặt</a>
 </nav>
 
 <div id="scrim" class="scrim" hidden></div>
+<aside id="meetpanel" class="panel" role="dialog" aria-modal="true" aria-labelledby="mtitle" hidden>
+  <div class="grab" aria-hidden="true"></div>
+  <div class="panel-head">
+    <div><p class="eyebrow" id="mteam">Họp nhóm</p><h2 id="mtitle">Đặt lịch họp nhóm</h2><p class="muted">Cả nhóm sẽ thấy lịch và nhận thông báo, không cần mật khẩu.</p></div>
+    <button class="btn icon" id="mclose" aria-label="Đóng"><svg class="ic"><use href="#i-x"/></svg></button>
+  </div>
+  <div class="panel-body">
+    <section class="stack" aria-labelledby="sugh">
+      <div class="row between"><h3 id="sugh">Giờ cả nhóm đều rảnh</h3>
+        <label class="sr" for="mdur">Thời lượng</label>
+        <select id="mdur" class="teamsel"><option value="30">30 phút</option><option value="60" selected>1 giờ</option><option value="90">1 giờ 30</option><option value="120">2 giờ</option></select></div>
+      <p class="hint">Không trùng buổi học hay mentor duty của bất kỳ ai trong nhóm. Workshop, office hour không tính là bận.</p>
+      <div id="msug" class="sugs" role="list"></div>
+    </section>
+    <form id="meetform" class="stack" novalidate>
+      <div class="field"><label for="mname">Tiêu đề <span class="muted">(không bắt buộc)</span></label><input id="mname" maxlength="80" placeholder="Họp nhóm"></div>
+      <div class="grid3">
+        <div class="field"><label for="mdate">Ngày</label><input id="mdate" type="date" required></div>
+        <div class="field"><label for="mstart">Bắt đầu</label><input id="mstart" type="time" step="900" required></div>
+        <div class="field"><label for="mend">Kết thúc</label><input id="mend" type="time" step="900" required></div>
+      </div>
+      <div class="field"><label for="mlink">Link họp</label><input id="mlink" type="url" inputmode="url" placeholder="https://meet.google.com/… hoặc https://zoom.us/j/…" required></div>
+      <div class="field"><label for="mpass">Mật khẩu phòng họp <span class="muted">(không bắt buộc)</span></label><input id="mpass" maxlength="64" autocomplete="off" placeholder="vd 123456"></div>
+      <div class="field"><label for="mnote">Ghi chú <span class="muted">(không bắt buộc)</span></label><input id="mnote" maxlength="300" placeholder="vd chốt slide demo"></div>
+      <div id="mauth" class="authbox stack" hidden>
+        <p id="mauthtext" class="hint"></p>
+        <div class="field"><label for="mpw" id="mpwlabel">Mật khẩu của bạn</label><input id="mpw" type="password" autocomplete="current-password" minlength="8"></div>
+        <div class="field" id="mpw2f" hidden><label for="mpw2">Nhập lại mật khẩu</label><input id="mpw2" type="password" autocomplete="new-password" minlength="8"></div>
+      </div>
+      <p id="mmsg" class="msg" role="status"></p>
+      <div class="actions">
+        <button class="btn primary" type="submit" id="msubmit">Đặt lịch và báo cho nhóm</button>
+        <button class="btn" type="button" id="mforce" hidden>Vẫn đặt giờ này</button>
+      </div>
+    </form>
+  </div>
+</aside>
 <aside id="panel" class="panel" role="dialog" aria-modal="true" aria-labelledby="ptitle" hidden>
   <div class="grab" aria-hidden="true"></div>
   <div class="panel-head">
@@ -261,6 +297,6 @@
   </div>
 </aside>
 
-<script src="/static/app.js?v=13"></script>
+<script src="/static/app.js?v=15"></script>
 </body>
 </html>

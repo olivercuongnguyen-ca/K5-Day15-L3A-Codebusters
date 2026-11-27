@@ -52,6 +52,14 @@ CREATE TABLE IF NOT EXISTS mentor_teams (user_id INT NOT NULL, team TEXT NOT NUL
 CREATE TABLE IF NOT EXISTS duty_changes (id TEXT PRIMARY KEY, team TEXT NOT NULL, source TEXT NOT NULL,
     start TEXT, "end" TEXT, cancelled INT DEFAULT 0, note TEXT, updated_by INT, updated_at TEXT);
 CREATE TABLE IF NOT EXISTS audit_log (at TEXT, user_id INT, action TEXT, detail TEXT);
+-- Students only need a password to schedule team meetings (viewing stays ID-only). Kept apart from staff accounts.
+CREATE TABLE IF NOT EXISTS student_accounts (student_id TEXT PRIMARY KEY, pw_hash TEXT NOT NULL,
+    must_change INT DEFAULT 0, created_at TEXT);
+CREATE TABLE IF NOT EXISTS student_sessions (token_hash TEXT PRIMARY KEY, student_id TEXT NOT NULL, created_at TEXT,
+    expires_at TEXT);
+-- Team meetings scheduled by a signed-in student; every teammate sees them without signing in (codebase/meetings.py).
+CREATE TABLE IF NOT EXISTS team_meetings (id TEXT PRIMARY KEY, team TEXT NOT NULL, title TEXT, start TEXT,
+    "end" TEXT, link TEXT, passcode TEXT, note TEXT, created_by TEXT, created_at TEXT, cancelled INT DEFAULT 0);
 """
 # Postgres: same tables; students already has the team columns, users.id is generated, usernames are unique
 # ignoring case (queries compare lower(username)).
@@ -178,6 +186,8 @@ def export_ics(con, student_id: str, cal_name: str = "Lịch AI20K") -> str:
     out = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Codebusters//AI20K//VI", "CALSCALE:GREGORIAN",
            "METHOD:PUBLISH", "X-WR-CALNAME:" + esc(cal_name), "REFRESH-INTERVAL;VALUE=DURATION:PT1H"]
     for i in all_items(con, student_id):
+        if i.get("cancelled"):
+            continue
         loc = i.get("my_room") or ("Online" if i["kind"] in ("ONL", "event", "mentor_duty") else "")
         title = i["title"] + (" · " + i["my_room"] if i.get("my_room") else "")
         out += ["BEGIN:VEVENT", "UID:%s@codebusters" % esc(i["id"]), "DTSTAMP:" + now,
@@ -260,9 +270,22 @@ def week(con, student_id: str, monday: str) -> dict:
                       "start": e["start"], "end": e["end"], "is_deadline": bool(e["is_deadline"]),
                       "location": e["location"], "url": e["url"]})
     items = apply_duty_changes(con, st["team"], items, days[0], days[-1])
+    items += team_meeting_items(con, st["team"], days[0], days[-1])
     items.sort(key=lambda x: x["start"])
     return {"student_id": student_id, "found": True, "class": st["class"], "team": st["team"], "days": days,
             "items": items, "clashes": clashes([i for i in items if not i.get("cancelled")])}
+
+
+def team_meeting_items(con, team, day_from, day_to):
+    """Team meetings as schedule items. Link and passcode are for teammates (the share view strips them)."""
+    if not team:
+        return []
+    return [{"source": "team", "id": m["id"], "kind": "team_meeting", "title": m["title"] or "Họp nhóm",
+             "start": m["start"], "end": m["end"], "is_deadline": False, "location": m["link"] or "",
+             "url": m["link"] or "", "passcode": m["passcode"] or "", "note": m["note"] or "",
+             "organizer": m["created_by"], "cancelled": bool(m["cancelled"])}
+            for m in con.execute("SELECT * FROM team_meetings WHERE team=? AND substr(start,1,10) BETWEEN ? AND ? "
+                                 "ORDER BY start", (team, day_from, day_to))]
 
 
 def apply_duty_changes(con, team, items, day_from, day_to):

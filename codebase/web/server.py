@@ -5,8 +5,11 @@ Roles: only admins and mentors sign in (codebase/auth.py). Students have no acco
 student ID (and optionally a team number), which the app keeps in a plain cookie to know whose schedule to show.
     public   GET /, /sw.js, /manifest, /api/buildings, /api/push/key, /cal/{token}.ics, /api/shared/{token}
              GET /api/setup/status · POST /api/setup/timetable (first upload only, while no timetable exists yet)
-    student  POST /api/student/enter {student_id, team?, phoenix_url?} · GET /api/student/me · PUT /api/student/team {team}
-             POST /api/student/exit · GET /api/week?monday · GET /api/summary?monday · POST /api/phoenix {url}
+    student  POST /api/student/login {student_id, password, create?} (a password only to schedule team meetings)
+             GET /api/meetings/suggest?duration · POST /api/meetings (signed in) · DELETE /api/meetings/{id} (organizer)
+             POST /api/student/password {old, new}
+             POST /api/student/enter {student_id, team?, phoenix_url?} · GET /api/student/me · PUT /api/student/team {team}
+             POST /api/student/exit · GET /api/week?monday · POST /api/phoenix {url}
              POST /api/leave · POST /api/push/subscribe · POST /api/push/test · GET /api/calendar-links · GET /api/share
     staff    POST /api/auth/login {username, password} · POST /api/auth/logout · GET /api/auth/me
              POST /api/auth/password {old, new}
@@ -36,10 +39,10 @@ import admin as admin_ops  # noqa: E402
 import auth  # noqa: E402
 import duties  # noqa: E402
 import ics_feed  # noqa: E402
+import meetings  # noqa: E402
 import mail_ingest  # noqa: E402
 import store  # noqa: E402
 import notify  # noqa: E402
-import summary  # noqa: E402
 import tracing  # noqa: E402
 from agent import answer  # noqa: E402
 from tkb import TkbFormatError  # noqa: E402
@@ -47,6 +50,7 @@ from tkb import TkbFormatError  # noqa: E402
 app = FastAPI(title="Codebusters — Lịch AI20K")
 COOKIE = "ai20k_session"          # staff sign-in session (secret token)
 STUDENT_COOKIE = "ai20k_student"   # which student's schedule to show (not a secret, not a login)
+STUDENT_AUTH = "ai20k_student_auth"  # a student's sign-in session, needed only to schedule team meetings
 
 
 @app.exception_handler(auth.AuthError)
@@ -183,10 +187,22 @@ class TeamIn(BaseModel):
     team: str = ""
 
 
-def _student_info(con, sid):
+def _student_info(con, sid, request: Request = None):
     st = con.execute("SELECT id, class, team, team_source FROM students WHERE id=?", (sid,)).fetchone()
+    signed = auth.student_for_token(con, request.cookies.get(STUDENT_AUTH)) if request else None
     return {"student_id": st["id"], "class": st["class"], "team": st["team"],
-            "team_set_by": st["team_source"]}
+            "team_set_by": st["team_source"], "has_password": auth.student_has_password(con, sid),
+            "signed_in": bool(signed and signed[0] == sid), "must_change": bool(signed and signed[1])}
+
+
+def student_signed_in(request: Request):
+    """A student signed in with their password (only scheduling needs this)."""
+    s = auth.student_for_token(store.connect(), request.cookies.get(STUDENT_AUTH))
+    if not s:
+        raise HTTPException(401, "Đăng nhập bằng mật khẩu để đặt lịch họp nhóm.")
+    if s[1]:
+        raise HTTPException(403, "Bạn cần đổi mật khẩu tạm trước khi đặt lịch họp.")
+    return {"student_id": s[0]}
 
 
 def _set_team(con, sid, team):
@@ -212,8 +228,42 @@ def student_enter(body: StudentIn, request: Request, response: FResponse):
 
 
 @app.get("/api/student/me")
-def student_me(student=Depends(student_only)):
-    return _student_info(store.connect(), student["student_id"])
+def student_me(request: Request, student=Depends(student_only)):
+    return _student_info(store.connect(), student["student_id"], request)
+
+
+class StudentLoginIn(BaseModel):
+    student_id: str
+    password: str
+    create: bool = False
+
+
+@app.post("/api/student/login")
+def student_login(body: StudentLoginIn, request: Request, response: FResponse):
+    """Sign in to schedule meetings. create=True sets the password the first time."""
+    con = store.connect()
+    sid = body.student_id.strip().upper()
+    if body.create:
+        auth.student_set_password(con, sid, body.password)
+    tok = auth.student_login(con, sid, body.password)
+    secure = request.url.scheme == "https"
+    response.set_cookie(STUDENT_AUTH, tok, max_age=auth.SESSION_DAYS * 86400, httponly=True, samesite="lax",
+                        secure=secure, path="/")
+    response.set_cookie(STUDENT_COOKIE, sid, max_age=180 * 86400, httponly=True, samesite="lax", secure=secure,
+                        path="/")
+    info = _student_info(con, sid)
+    s = auth.student_for_token(con, tok)
+    info.update(signed_in=True, must_change=bool(s and s[1]))
+    return info
+
+
+@app.post("/api/student/password")
+def student_password(body: PasswordIn, request: Request):
+    s = auth.student_for_token(store.connect(), request.cookies.get(STUDENT_AUTH))
+    if not s:
+        raise HTTPException(401, "Bạn cần đăng nhập.")
+    auth.student_change_password(store.connect(), s[0], body.old, body.new, keep_token=request.cookies.get(STUDENT_AUTH))
+    return {"ok": True}
 
 
 @app.put("/api/student/team")
@@ -224,9 +274,44 @@ def student_team(body: TeamIn, student=Depends(student_only)):
 
 
 @app.post("/api/student/exit")
-def student_exit(response: FResponse):
+def student_exit(request: Request, response: FResponse):
+    auth.student_logout(store.connect(), request.cookies.get(STUDENT_AUTH))
     response.delete_cookie(STUDENT_COOKIE, path="/")
+    response.delete_cookie(STUDENT_AUTH, path="/")
     return {"ok": True}
+
+
+# ---- Team meetings ----
+@app.get("/api/meetings/suggest")
+def meeting_suggest(duration: int = 60, days: int = 7, student=Depends(student_only)):
+    return meetings.suggest(store.connect(), student["student_id"], duration, max(1, min(days, 14)))
+
+
+class MeetingIn(BaseModel):
+    start: str
+    end: str
+    link: str
+    passcode: str = ""
+    title: str = ""
+    note: str = ""
+    force: bool = False
+
+
+@app.post("/api/meetings")
+def meeting_create(body: MeetingIn, student=Depends(student_signed_in)):
+    return meetings.create(store.connect(), student["student_id"], **body.model_dump())
+
+
+@app.delete("/api/meetings/{meeting_id}")
+def meeting_cancel(meeting_id: str, student=Depends(student_signed_in)):
+    meetings.cancel(store.connect(), student["student_id"], meeting_id)
+    return {"ok": True}
+
+
+@app.post("/api/admin/students/{student_id}/reset")
+def admin_reset_student(student_id: str, user=Depends(admin_only)):
+    return {"temporary_password": auth.student_reset_password(store.connect(), student_id.strip().upper(), user["id"]),
+            "note": "Gửi mật khẩu tạm này cho học viên qua kênh riêng; họ phải đổi trước khi đặt lịch họp."}
 
 
 # ---- Student: own schedule ----
@@ -402,31 +487,12 @@ def shared(token: str, monday: str = None):
     w = store.week(con, sid, monday or _monday(date.today()))
     for i in w["items"]:
         i.pop("url", None)
+        i.pop("passcode", None)
         if i.get("location"):
             i["location"] = "online"
     w.update(student_id=None, owner=con.execute("SELECT short_name FROM students WHERE id=?", (sid,)).fetchone()["short_name"],
              phoenix_linked=True, phoenix_synced_at=None, tkb_version=None, room_changes=[], readonly=True)
     return w
-
-
-# ---- AI summary "tuần này mình còn cần làm gì" (only from now on) ----
-_SUMMARY_CACHE = {}
-
-
-@app.get("/api/summary")
-def week_summary(monday: str = None, user=Depends(student_only)):
-    con = store.connect()
-    sid = user["student_id"]
-    w = summary.remaining(store.week(con, sid, monday or _monday(date.today())),
-                          datetime.now(timezone(timedelta(hours=7))).strftime("%Y-%m-%dT%H:%M"))
-    key = (sid, w["days"][0], json.dumps([(i["id"], i["start"], i.get("my_room")) for i in w["items"]]))
-    if key not in _SUMMARY_CACHE:
-        tracing.begin("summary")
-        try:
-            _SUMMARY_CACHE[key] = summary.summarize(w)
-        finally:
-            tracing.end()
-    return _SUMMARY_CACHE[key]
 
 
 # ---- Admin: timetable and accounts ----
