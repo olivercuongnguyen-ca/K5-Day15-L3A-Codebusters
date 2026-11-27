@@ -5,3 +5,5 @@ uvicorn==0.34.0
 python-multipart==0.0.20
 pytest==8.3.4
 pywebpush==2.0.3
+# Only when DATABASE_URL points at Postgres (Neon). SQLite needs nothing.
+psycopg[binary]==3.3.9

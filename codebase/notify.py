@@ -40,7 +40,8 @@ def public_key() -> str:
 
 def subscribe(con, student_id: str, sub: dict):
     with con:
-        con.execute("INSERT OR REPLACE INTO push_subs VALUES (?,?,?,?)",
+        con.execute("INSERT INTO push_subs VALUES (?,?,?,?) ON CONFLICT(endpoint) DO UPDATE SET "
+                    "student_id=excluded.student_id, sub=excluded.sub, created_at=excluded.created_at",
                     (sub["endpoint"], student_id, json.dumps(sub), datetime.now(VN).isoformat(timespec="seconds")))
 
 
