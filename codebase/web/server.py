@@ -188,9 +188,9 @@ class TeamIn(BaseModel):
 
 
 def _student_info(con, sid, request: Request = None):
-    st = con.execute("SELECT id, class, team, team_source FROM students WHERE id=?", (sid,)).fetchone()
+    st = con.execute("SELECT id, class, team, team_source, short_name FROM students WHERE id=?", (sid,)).fetchone()
     signed = auth.student_for_token(con, request.cookies.get(STUDENT_AUTH)) if request else None
-    return {"student_id": st["id"], "class": st["class"], "team": st["team"],
+    return {"student_id": st["id"], "class": st["class"], "team": st["team"], "short_name": st["short_name"],
             "team_set_by": st["team_source"], "has_password": auth.student_has_password(con, sid),
             "signed_in": bool(signed and signed[0] == sid), "must_change": bool(signed and signed[1])}
 

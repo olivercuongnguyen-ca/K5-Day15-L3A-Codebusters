@@ -31,6 +31,8 @@ const categoryLabelMap: Record<ScheduleEvent["category"], string> = {
   session: "Buổi học",
   coaching: "Workshop",
   officehour: "Hỗ trợ / Lab",
+  duty: "Mentor duty",
+  meeting: "Họp nhóm",
   deadline: "Hạn nộp",
 };
 
@@ -41,6 +43,8 @@ const categoryVariantMap: Record<
   session: "secondary",
   coaching: "primary",
   officehour: "info",
+  duty: "info",
+  meeting: "primary",
   deadline: "warning",
 };
 
@@ -101,12 +105,12 @@ export function EventDetailSheet({
             </Button>
             <div
               className={
-                event.category !== "deadline" && onRequestLeave
+                event.category === "session" && onRequestLeave
                   ? "grid grid-cols-1 sm:grid-cols-2 gap-2"
                   : "flex"
               }
             >
-              {event.category !== "deadline" && onRequestLeave ? (
+              {event.category === "session" && onRequestLeave ? (
                 <Button
                   variant="secondary"
                   size="md"

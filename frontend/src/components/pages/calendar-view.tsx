@@ -1,12 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import {
-  MOCK_EVENTS,
-  MOCK_WEEK_DAYS,
-  TODAY_DATE_KEY,
-  getDateHeading,
-} from "@/data/mock-schedule";
+import { useEffect, useMemo, useState } from "react";
+import type { ScheduleEvent } from "@/data/mock-schedule";
+import { addDays, mondayOf } from "@/lib/backend";
 import { cn } from "@/lib/cn";
 import {
   Badge,
@@ -16,7 +12,7 @@ import {
   type EventCategory,
   Tabs,
 } from "@/components/ui";
-import { useApp } from "@/components/app/app-provider";
+import { useApp, useHydrated } from "@/components/app/app-provider";
 
 type EventFilter = "all" | EventCategory;
 
@@ -25,33 +21,51 @@ const FILTER_OPTIONS: Array<{ key: EventFilter; label: string }> = [
   { key: "session", label: "Buổi học" },
   { key: "coaching", label: "Coaching" },
   { key: "officehour", label: "Trực hỗ trợ" },
+  { key: "duty", label: "Mentor duty" },
+  { key: "meeting", label: "Họp nhóm" },
   { key: "deadline", label: "Hạn nộp" },
 ];
 
 const WEEKDAY_HEADERS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
-// November 2026 starts on Sunday -> 6 leading blank cells (T2..T7)
-const NOV_2026_LEADING_BLANKS = 6;
-const NOV_2026_DAYS = Array.from({ length: 30 }, (_, index) => {
-  const day = index + 1;
-  const dateKey = `2026-11-${String(day).padStart(2, "0")}`;
-  return { day, dateKey };
-});
+function monthGrid(monthKey: string) {
+  const first = new Date(`${monthKey}-01T00:00:00`);
+  const leading = (first.getDay() + 6) % 7; // Monday-first grid
+  const count = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+  const days = Array.from({ length: count }, (_, index) => {
+    const day = index + 1;
+    return { day, dateKey: `${monthKey}-${String(day).padStart(2, "0")}` };
+  });
+  return { leading, days };
+}
 
 export function CalendarView() {
-  const { openEventDetail, showToast } = useApp();
+  const { openEventDetail, showToast, schedule } = useApp();
+  const TODAY_DATE_KEY = schedule.todayKey;
+  const getDateHeading = schedule.getDateHeading;
   const [viewMode, setViewMode] = useState<string>("month");
   const [filter, setFilter] = useState<EventFilter>("all");
-  const [selectedDateKey, setSelectedDateKey] = useState<string>("2026-11-28");
+  const [pickedDateKey, setSelectedDateKey] = useState<string | null>(null);
+  const selectedDateKey = pickedDateKey ?? TODAY_DATE_KEY;
+  const monthKey = selectedDateKey.slice(0, 7);
+  const { leading: MONTH_LEADING_BLANKS, days: MONTH_DAYS } = useMemo(() => monthGrid(monthKey), [monthKey]);
+  const MONTH_LABEL = `Tháng ${Number(monthKey.slice(5, 7))}, ${monthKey.slice(0, 4)}`;
+  const WEEK_DAYS = schedule.weekDays(selectedDateKey);
+
+  const { ensureWeek } = schedule;
+  useEffect(() => {  // load every week this month touches
+    if (!selectedDateKey) return;
+    for (let key = mondayOf(`${monthKey}-01`); key.slice(0, 7) <= monthKey; key = addDays(key, 7)) ensureWeek(key);
+  }, [monthKey, ensureWeek]);
 
   const filteredEvents = useMemo(() => {
-    return MOCK_EVENTS.filter(
+    return schedule.events.filter(
       (evt) => filter === "all" || evt.category === filter,
     );
-  }, [filter]);
+  }, [filter, schedule.events]);
 
   const eventsByDateMap = useMemo(() => {
-    const map = new Map<string, typeof MOCK_EVENTS>();
+    const map = new Map<string, ScheduleEvent[]>();
     for (const evt of filteredEvents) {
       const existing = map.get(evt.dateKey) ?? [];
       existing.push(evt);
@@ -61,11 +75,14 @@ export function CalendarView() {
   }, [filteredEvents]);
 
   const selectedDayEvents = eventsByDateMap.get(selectedDateKey) ?? [];
+  const hydrated = useHydrated();
 
   function handleJumpToday() {
     setSelectedDateKey(TODAY_DATE_KEY);
-    showToast("Đã chuyển về hôm nay (27/11)", "info");
+    showToast("Đã chuyển về hôm nay", "info");
   }
+
+  if (!hydrated) return <div aria-busy="true" className="min-h-[60dvh]" />;
 
   return (
     <div className="flex flex-col gap-4 md:gap-6">
@@ -73,7 +90,7 @@ export function CalendarView() {
       <header className="flex items-center justify-between gap-3 md:gap-4">
         <div className="flex flex-col gap-0.5">
           <h1 className="text-[20px] leading-[26px] md:text-[26px] md:leading-[34px] font-semibold tracking-[-0.2px] text-text-primary">
-            Tháng 11, 2026
+            {MONTH_LABEL}
           </h1>
           <span className="text-[12px] leading-[18px] md:text-[13px] md:leading-[20px] text-text-secondary">
             Lịch học hợp nhất theo tuần và tháng
@@ -128,7 +145,7 @@ export function CalendarView() {
       {viewMode === "month" ? (
         <div className="flex flex-col gap-4 md:gap-6">
           <section
-            aria-label="Lịch tháng 11 năm 2026"
+            aria-label={`Lịch ${MONTH_LABEL.toLowerCase()}`}
             className="bg-surface border border-border rounded-[20px] md:rounded-[24px] p-3 sm:p-5 shadow-card-sm"
           >
             <div className="grid grid-cols-7 text-center pb-1.5 sm:pb-2">
@@ -143,11 +160,11 @@ export function CalendarView() {
             </div>
 
             <div className="grid grid-cols-7 gap-1 sm:gap-1.5 text-center">
-              {Array.from({ length: NOV_2026_LEADING_BLANKS }).map((_, idx) => (
+              {Array.from({ length: MONTH_LEADING_BLANKS }).map((_, idx) => (
                 <span key={`blank-${idx}`} aria-hidden="true" />
               ))}
 
-              {NOV_2026_DAYS.map(({ day, dateKey }) => {
+              {MONTH_DAYS.map(({ day, dateKey }) => {
                 const dayEvents = eventsByDateMap.get(dateKey) ?? [];
                 const isToday = dateKey === TODAY_DATE_KEY;
                 const isSelected = dateKey === selectedDateKey;
@@ -252,7 +269,7 @@ export function CalendarView() {
       ) : (
         /* Week View (23/11 – 29/11) */
         <section aria-label="Lịch tuần hiện tại" className="flex flex-col gap-5">
-          {MOCK_WEEK_DAYS.map((dayItem) => {
+          {WEEK_DAYS.map((dayItem) => {
             const dayEvents = eventsByDateMap.get(dayItem.key) ?? [];
             const isToday = dayItem.key === TODAY_DATE_KEY;
 

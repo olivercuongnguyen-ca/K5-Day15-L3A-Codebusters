@@ -8,7 +8,7 @@ import {
   VideoIcon,
 } from "./icons";
 
-export type EventCategory = "session" | "coaching" | "officehour" | "deadline";
+export type EventCategory = "session" | "coaching" | "officehour" | "duty" | "meeting" | "deadline";
 
 export type EventCardVariant = "featured" | "timeline" | "compact";
 
@@ -39,6 +39,8 @@ const categoryBadgeConfig: Record<
   session: { label: "Buổi học", variant: "secondary" },
   coaching: { label: "Workshop", variant: "primary" },
   officehour: { label: "Hỗ trợ / Lab", variant: "info" },
+  duty: { label: "Mentor duty", variant: "info" },
+  meeting: { label: "Họp nhóm", variant: "primary" },
   deadline: { label: "Hạn nộp", variant: "warning" },
 };
 

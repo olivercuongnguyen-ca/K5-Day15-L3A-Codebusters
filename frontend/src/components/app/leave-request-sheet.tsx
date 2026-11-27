@@ -1,14 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MOCK_EVENTS, type ScheduleEvent } from "@/data/mock-schedule";
+import type { ScheduleEvent } from "@/data/mock-schedule";
+import { post, type LeaveResult } from "@/lib/backend";
 import { cn } from "@/lib/cn";
-import {
-  DEFAULT_LEAVE_RECIPIENT,
-  buildLeaveEmailDraft,
-  buildMailtoUrl,
-  buildOutlookComposeUrl,
-} from "@/lib/leave-email-draft";
+import { buildMailtoUrl, buildOutlookComposeUrl } from "@/lib/leave-email-draft";
+
+const DEFAULT_LEAVE_RECIPIENT = "(chọn người nhận trong Outlook)";
 import {
   Badge,
   Button,
@@ -52,11 +50,14 @@ function LeaveRequestForm({
   onClose: () => void;
   onToast: (message: string, tone?: ToastTone) => void;
 }) {
-  const { currentUser } = useApp();
+  const { schedule } = useApp();
 
+  // class sessions from today on: the leave agent only handles timetable sessions
   const selectableEvents = useMemo(
-    () => MOCK_EVENTS.filter((evt) => evt.category !== "deadline"),
-    [],
+    () => schedule.events.filter(
+      (evt) => evt.category === "session" && !evt.cancelled && evt.dateKey >= schedule.todayKey,
+    ),
+    [schedule.events, schedule.todayKey],
   );
 
   const defaultEventId =
@@ -65,7 +66,9 @@ function LeaveRequestForm({
       : (selectableEvents[0]?.id ?? "");
 
   const [selectedEventId, setSelectedEventId] = useState(defaultEventId);
-  const [recipientEmail, setRecipientEmail] = useState(DEFAULT_LEAVE_RECIPIENT);
+  const [recipientEmail, setRecipientEmail] = useState("");
+  const [aiMessage, setAiMessage] = useState<{ tone: "info" | "error"; text: string } | null>(null);
+  const [basedOn, setBasedOn] = useState<string[]>([]);
   const [reason, setReason] = useState("");
   const [hasEvidence, setHasEvidence] = useState(false);
   const [evidenceDetail, setEvidenceDetail] = useState("");
@@ -92,29 +95,35 @@ function LeaveRequestForm({
   const evidenceMissing =
     touched && hasEvidence && evidenceDetail.trim().length === 0;
 
-  function handleGenerateDraft() {
+  async function handleGenerateDraft() {
     setTouched(true);
+    setAiMessage(null);
     if (!selectedEvent) return;
     if (reason.trim().length === 0) return;
     if (hasEvidence && evidenceDetail.trim().length === 0) return;
 
     setIsGenerating(true);
-    if (timerRef.current) clearTimeout(timerRef.current);
-
-    timerRef.current = setTimeout(() => {
-      const draft = buildLeaveEmailDraft({
-        user: currentUser,
-        event: selectedEvent,
-        recipientEmail,
-        reason,
-        hasEvidence,
-        evidenceDetail,
+    try {
+      const r = await post<LeaveResult>("/api/leave", {
+        session: selectedEvent.leaveHint ?? selectedEvent.title,
+        reason: reason.trim(),
+        evidence_type: hasEvidence ? evidenceDetail.trim() : "không có",
       });
-      setDraftSubject(draft.subject);
-      setDraftBody(draft.body);
+      if (r.status === "ready" && r.email) {
+        setDraftSubject(r.email.subject);
+        setDraftBody(r.email.body);
+        setRecipientEmail(r.email.to);
+        setBasedOn(r.based_on);
+        setStep("preview");
+      } else {
+        // the agent asks one question or refuses: show it and let the student fix the form
+        setAiMessage({ tone: r.status === "refuse" ? "error" : "info", text: r.question || "AI chưa soạn được thư." });
+      }
+    } catch (err) {
+      setAiMessage({ tone: "error", text: (err as Error).message });
+    } finally {
       setIsGenerating(false);
-      setStep("preview");
-    }, 320);
+    }
   }
 
   function handleOpenOutlook() {
@@ -264,14 +273,26 @@ function LeaveRequestForm({
               </select>
             </div>
 
-            <Input
-              label="Gửi đến (Email giáo vụ / giảng viên)"
-              type="email"
-              value={recipientEmail}
-              onChange={(e) => setRecipientEmail(e.target.value)}
-              placeholder={DEFAULT_LEAVE_RECIPIENT}
-              leftIcon={<MailIcon size={16} />}
-            />
+            <p className="flex items-start gap-2 text-[12.5px] leading-[18px] text-text-secondary">
+              <MailIcon size={15} className="shrink-0 mt-0.5" />
+              <span>Thư gửi tới ban đào tạo (địa chỉ do app cấu hình sẵn). AI chỉ soạn nháp; bạn tự kiểm tra, đính kèm minh chứng và bấm Gửi trong Outlook.</span>
+            </p>
+            {selectableEvents.length === 0 ? (
+              <p className="text-[12.5px] text-on-warning bg-warning-background rounded-[12px] px-3 py-2">
+                Không còn buổi học nào sắp tới trong lịch đã tải.
+              </p>
+            ) : null}
+            {aiMessage ? (
+              <div
+                role="status"
+                className={cn(
+                  "text-[13px] leading-[19px] rounded-[14px] px-3.5 py-2.5",
+                  aiMessage.tone === "error" ? "bg-danger-background text-on-danger-background" : "bg-surface-subtle text-text-primary border border-border",
+                )}
+              >
+                <strong className="font-semibold">AI: </strong>{aiMessage.text}
+              </div>
+            ) : null}
 
             {/* Evidence toggle */}
             <div className="flex flex-col gap-2 pt-1">
@@ -434,6 +455,11 @@ function LeaveRequestForm({
             />
           </div>
 
+          {basedOn.length ? (
+            <p className="text-[12.5px] leading-[18px] text-text-secondary">
+              Dựa trên lịch: <span className="tabular-nums text-text-primary">{basedOn.join(" · ")}</span>
+            </p>
+          ) : null}
           {hasEvidence && evidenceDetail.trim() ? (
             <div className="flex items-start gap-2.5 p-3.5 rounded-[14px] bg-warning-background text-on-warning">
               <CheckCircleIcon size={17} className="shrink-0 mt-0.5" />

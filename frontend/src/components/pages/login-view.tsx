@@ -1,14 +1,10 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  authenticateStaffAccount,
-  authenticateStudentCode,
-  getAccountsByRole,
-  type UserRole,
-} from "@/data/mock-accounts";
+import type { UserRole } from "@/data/mock-accounts";
+import { api } from "@/lib/backend";
 import {
   Badge,
   Button,
@@ -20,93 +16,85 @@ import {
   InfoIcon,
   Input,
   LockIcon,
-  MailIcon,
   SchoolIcon,
   ShieldIcon,
   Tabs,
 } from "@/components/ui";
 import { useApp } from "@/components/app/app-provider";
 
+function UserIconSlot() {
+  return <IdCardIcon size={18} />;
+}
+
 export function LoginView() {
   const router = useRouter();
-  const { setCurrentUser, showToast } = useApp();
+  const { enterStudent, staffLogin, showToast } = useApp();
 
   const [role, setRole] = useState<UserRole>("student");
-  const [studentCode, setStudentCode] = useState("HV202601");
+  const [studentCode, setStudentCode] = useState("");
+  const [team, setTeam] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
+  const [busy, setBusy] = useState(false);
+  const [setup, setSetup] = useState<{ timetable: boolean; students: number } | null>(null);
+  const [uploadMsg, setUploadMsg] = useState<string | undefined>();
 
-  const studentAccounts = getAccountsByRole("student");
-  const mentorAccounts = getAccountsByRole("mentor");
-  const adminAccounts = getAccountsByRole("admin");
+  useEffect(() => {
+    api<{ timetable: boolean; students: number }>("/api/setup/status").then(setSetup).catch(() => setSetup(null));
+  }, []);
 
   function handleRoleChange(nextValue: string) {
-    const nextRole = nextValue as UserRole;
-    setRole(nextRole);
+    setRole(nextValue as UserRole);
     setErrorMessage(undefined);
     setShowPassword(false);
+    setPassword("");
+  }
 
-    if (nextRole === "student") {
-      setStudentCode("HV202601");
-    } else if (nextRole === "mentor") {
-      setEmail("quan.mentor@unify.edu.vn");
-      setPassword("mentor123");
-    } else {
-      setEmail("admin@unify.edu.vn");
-      setPassword("admin123");
+  async function handleUpload(file: File | undefined) {
+    if (!file) return;
+    const fd = new FormData();
+    fd.append("file", file);
+    setUploadMsg("Đang đọc file…");
+    try {
+      const r = await api<{ students: number; new: boolean }>("/api/setup/timetable", { method: "POST", body: fd });
+      setUploadMsg(`Đã tải thời khoá biểu: ${r.students} học viên. Giờ nhập mã học viên của bạn.`);
+      setSetup({ timetable: true, students: r.students });
+    } catch (err) {
+      setUploadMsg((err as Error).message);
     }
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErrorMessage(undefined);
-
-    if (role === "student") {
-      if (!studentCode.trim()) {
-        setErrorMessage("Vui lòng nhập mã học viên để tiếp tục.");
+    setBusy(true);
+    try {
+      if (role === "student") {
+        if (!studentCode.trim()) {
+          setErrorMessage("Vui lòng nhập mã học viên để tiếp tục.");
+          return;
+        }
+        const me = await enterStudent(studentCode.trim(), team.trim());
+        showToast(`Đã mở lịch của ${me.short_name || me.student_id} · lớp ${me.class}`, "success");
+        router.push("/");
         return;
       }
-      const matched = authenticateStudentCode(studentCode);
-      if (!matched) {
-        setErrorMessage(
-          "Không tìm thấy mã học viên trong dữ liệu mẫu (thử HV202601 hoặc HV202602).",
-        );
+      if (!email.trim() || !password) {
+        setErrorMessage("Vui lòng nhập tên đăng nhập và mật khẩu.");
         return;
       }
-      setCurrentUser(matched);
-      showToast(
-        `Đã đăng nhập bản demo · ${matched.name} (${matched.roleLabel})`,
-        "success",
-      );
-      router.push("/");
-      return;
+      const me = await staffLogin(email.trim(), password);
+      if (me.role !== role) showToast(`Tài khoản này là ${me.role === "admin" ? "Admin" : "Mentor"}.`, "info");
+      showToast(`Đã đăng nhập · ${me.display_name}`, "success");
+      router.push("/settings");
+    } catch (err) {
+      setErrorMessage((err as Error).message);
+    } finally {
+      setBusy(false);
     }
-
-    if (!email.trim() || !password) {
-      setErrorMessage("Vui lòng nhập đầy đủ tài khoản email và mật khẩu.");
-      return;
-    }
-
-    const matched = authenticateStaffAccount(role, email, password);
-    if (!matched) {
-      setErrorMessage(
-        "Tài khoản hoặc mật khẩu chưa khớp với dữ liệu mẫu của vai trò này.",
-      );
-      return;
-    }
-
-    setCurrentUser(matched);
-    showToast(
-      `Đã đăng nhập bản demo · ${matched.name} (${matched.roleLabel})`,
-      "success",
-    );
-    router.push("/");
   }
-
-  const activeStaffSamples =
-    role === "mentor" ? mentorAccounts : role === "admin" ? adminAccounts : [];
 
   return (
     <div className="min-h-dvh bg-background text-text-primary flex flex-col justify-center px-4 py-6 md:px-5 md:py-8 pt-[max(24px,env(safe-area-inset-top))] pb-[max(24px,env(safe-area-inset-bottom))]">
@@ -124,14 +112,14 @@ export function LoginView() {
 
           <div className="flex flex-col items-center gap-1 md:gap-1.5">
             <Badge variant="secondary" size="sm">
-              Dữ liệu mẫu · Bản demo
+              Lịch AI20K
             </Badge>
             <h1 className="text-[20px] leading-[28px] md:text-[24px] md:leading-[32px] font-semibold tracking-[-0.2px] text-text-primary text-balance">
               Đăng nhập theo vai trò
             </h1>
             <p className="text-[13px] leading-[19px] md:text-[14px] md:leading-[21px] text-text-secondary max-w-sm text-pretty">
-              Chọn danh mục phù hợp để trải nghiệm giao diện với bộ tài khoản
-              mẫu, chưa kết nối xác thực thật.
+              Học viên chỉ cần mã học viên. Mentor và admin đăng nhập bằng
+              tài khoản do ban đào tạo cấp.
             </p>
           </div>
         </header>
@@ -185,7 +173,7 @@ export function LoginView() {
                     setStudentCode(e.target.value);
                     if (errorMessage) setErrorMessage(undefined);
                   }}
-                  placeholder="Ví dụ: HV202601"
+                  placeholder="Ví dụ: 2A2026xxxxx"
                   leftIcon={<IdCardIcon size={18} />}
                   error={errorMessage}
                   helperText={
@@ -195,32 +183,39 @@ export function LoginView() {
                   }
                 />
 
-                {/* Sample student codes */}
-                <div className="flex flex-col gap-2">
-                  <span className="text-[12px] font-medium text-text-secondary">
-                    Mã học viên mẫu (chạm để điền nhanh):
-                  </span>
-                  <div className="flex flex-wrap gap-2">
-                    {studentAccounts.map((acc) => (
-                      <button
-                        key={acc.id}
-                        type="button"
-                        onClick={() => {
-                          setStudentCode(acc.studentCode ?? "");
-                          setErrorMessage(undefined);
-                        }}
-                        className="inline-flex items-center gap-1.5 min-h-9 px-3.5 rounded-full bg-background border border-border text-[12px] font-medium text-text-primary hover:bg-surface-subtle transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                      >
-                        <span className="font-semibold tabular-nums">
-                          {acc.studentCode}
-                        </span>
-                        <span className="text-text-secondary">· {acc.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <Input
+                  label="Số nhóm (không bắt buộc)"
+                  name="team"
+                  type="text"
+                  inputMode="numeric"
+                  tabularNums
+                  value={team}
+                  onChange={(e) => setTeam(e.target.value)}
+                  placeholder="Ví dụ: 18"
+                  helperText="Tuần đầu chưa chia nhóm thì để trống, sau này sửa trong Cài đặt."
+                />
 
-                <Button type="submit" variant="primary" size="lg" fullWidth>
+                {setup && !setup.timetable ? (
+                  <div className="p-3.5 rounded-[16px] bg-warning-background text-on-warning flex flex-col gap-2">
+                    <span className="text-[13px] leading-[19px] font-semibold">
+                      Lần chạy đầu: app chưa có thời khoá biểu
+                    </span>
+                    <span className="text-[12.5px] leading-[18px]">
+                      Tải file đính kèm <code>Thoi_khoa_bieu_….html</code> từ email lịch học hằng tuần. File chỉ
+                      lưu trên máy chủ của app.
+                    </span>
+                    <input
+                      type="file"
+                      accept=".html,.htm,.eml"
+                      aria-label="File thời khoá biểu"
+                      onChange={(e) => void handleUpload(e.target.files?.[0])}
+                      className="text-[12.5px]"
+                    />
+                    {uploadMsg ? <span className="text-[12.5px]" role="status">{uploadMsg}</span> : null}
+                  </div>
+                ) : null}
+
+                <Button type="submit" variant="primary" size="lg" fullWidth disabled={busy}>
                   Tiếp tục với mã học viên
                 </Button>
               </>
@@ -233,27 +228,23 @@ export function LoginView() {
                   />
                   <span className="text-[13px] leading-[19px] text-text-secondary">
                     {role === "mentor"
-                      ? "Tài khoản Mentor / Lab Coach cần email và mật khẩu để truy cập lịch coaching và trực hỗ trợ."
-                      : "Tài khoản Admin cần email và mật khẩu quản trị để kiểm tra cấu hình và nguồn dữ liệu."}
+                      ? "Mentor đăng nhập để xem và đổi lịch mentor duty của nhóm mình phụ trách."
+                      : "Admin đăng nhập để cập nhật thời khoá biểu và quản lý tài khoản mentor."}
                   </span>
                 </div>
 
                 <Input
-                  label="Email tài khoản"
-                  name="email"
-                  type="email"
+                  label="Tên đăng nhập"
+                  name="username"
+                  type="text"
                   autoComplete="username"
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
                     if (errorMessage) setErrorMessage(undefined);
                   }}
-                  placeholder={
-                    role === "mentor"
-                      ? "quan.mentor@unify.edu.vn"
-                      : "admin@unify.edu.vn"
-                  }
-                  leftIcon={<MailIcon size={18} />}
+                  placeholder={role === "mentor" ? "vd mentor.a" : "vd giaovu"}
+                  leftIcon={<UserIconSlot />}
                 />
 
                 <Input
@@ -266,7 +257,7 @@ export function LoginView() {
                     setPassword(e.target.value);
                     if (errorMessage) setErrorMessage(undefined);
                   }}
-                  placeholder="Nhập mật khẩu mẫu"
+                  placeholder="Mật khẩu"
                   leftIcon={<LockIcon size={18} />}
                   error={errorMessage}
                   rightSlot={
@@ -281,41 +272,7 @@ export function LoginView() {
                   }
                 />
 
-                {/* Sample staff accounts */}
-                <div className="flex flex-col gap-2">
-                  <span className="text-[12px] font-medium text-text-secondary">
-                    Tài khoản mẫu (chạm để điền nhanh):
-                  </span>
-                  <div className="flex flex-col gap-2">
-                    {activeStaffSamples.map((acc) => (
-                      <button
-                        key={acc.id}
-                        type="button"
-                        onClick={() => {
-                          setEmail(acc.email);
-                          setPassword(acc.password ?? "");
-                          setErrorMessage(undefined);
-                        }}
-                        className="w-full text-left px-3.5 py-2.5 rounded-[14px] bg-background border border-border hover:bg-surface-subtle transition-colors flex items-center justify-between gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                      >
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-[13px] font-semibold text-text-primary truncate">
-                            {acc.name} · {acc.roleLabel}
-                          </span>
-                          <span className="text-[12px] text-text-secondary truncate tabular-nums">
-                            {acc.email} · MK: {acc.password}
-                          </span>
-                        </div>
-                        <ChevronRightIcon
-                          size={16}
-                          className="text-text-secondary shrink-0"
-                        />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <Button type="submit" variant="primary" size="lg" fullWidth>
+                <Button type="submit" variant="primary" size="lg" fullWidth disabled={busy}>
                   {role === "mentor"
                     ? "Đăng nhập Mentor / Lab Coach"
                     : "Đăng nhập Admin"}
@@ -331,7 +288,7 @@ export function LoginView() {
             href="/"
             className="inline-flex items-center gap-1 min-h-11 px-4 rounded-full text-primary font-medium hover:bg-surface-subtle transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
-            <span>Xem lịch ngay không cần đăng nhập</span>
+            <span>Về trang lịch</span>
             <ChevronRightIcon size={16} />
           </Link>
         </footer>
