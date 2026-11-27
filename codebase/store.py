@@ -9,6 +9,7 @@ Tables
     room_changes     diff produced when a new timetable version replaces the old one (drives "phòng đã đổi" notices)
 """
 import json
+import re
 import os
 import sqlite3
 from datetime import datetime, timedelta, timezone
@@ -34,7 +35,69 @@ CREATE TABLE IF NOT EXISTS room_changes (version TEXT, student_id TEXT, session_
 CREATE TABLE IF NOT EXISTS tokens (student_id TEXT, kind TEXT, token TEXT UNIQUE, PRIMARY KEY (student_id, kind));
 CREATE TABLE IF NOT EXISTS push_subs (endpoint TEXT PRIMARY KEY, student_id TEXT, sub TEXT, created_at TEXT);
 CREATE TABLE IF NOT EXISTS notified (key TEXT PRIMARY KEY, at TEXT);
+-- Staff accounts (admin, mentor) and sign-in (codebase/auth.py). Students have no account: they use their
+-- student ID. Passwords are PBKDF2 hashes; session tokens are stored as SHA-256.
+CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    role TEXT NOT NULL CHECK (role IN ('admin','mentor')), display_name TEXT, student_id TEXT UNIQUE,
+    pw_hash TEXT NOT NULL, must_change INT DEFAULT 0, disabled INT DEFAULT 0, created_at TEXT);
+CREATE TABLE IF NOT EXISTS auth_sessions (token_hash TEXT PRIMARY KEY, user_id INT NOT NULL, created_at TEXT,
+    expires_at TEXT);
+CREATE TABLE IF NOT EXISTS mentor_teams (user_id INT NOT NULL, team TEXT NOT NULL, PRIMARY KEY (user_id, team));
+-- Mentor duty changes layered over Phoenix (codebase/duties.py): source 'phoenix' = override of a Phoenix duty
+-- (id = its UID), source 'mentor' = a slot the mentor added. Phoenix itself is never written to.
+CREATE TABLE IF NOT EXISTS duty_changes (id TEXT PRIMARY KEY, team TEXT NOT NULL, source TEXT NOT NULL,
+    start TEXT, "end" TEXT, cancelled INT DEFAULT 0, note TEXT, updated_by INT, updated_at TEXT);
+CREATE TABLE IF NOT EXISTS audit_log (at TEXT, user_id INT, action TEXT, detail TEXT);
 """
+TEAM_RE = re.compile(r"Nhóm\s*(\d+)", re.I)
+
+
+def team_of(title: str):
+    """'Nhóm 18 (đổi giờ)' -> 'Nhóm 18'."""
+    m = TEAM_RE.search(title or "")
+    return "Nhóm %s" % m.group(1) if m else None
+
+
+def _migrate(con):
+    cols = {r["name"] for r in con.execute("PRAGMA table_info(students)")}
+    with con:
+        if "team" not in cols:
+            con.execute("ALTER TABLE students ADD COLUMN team TEXT")
+        if "team_source" not in cols:  # 'student' = typed by the student (wins), 'phoenix' = guessed from the feed
+            con.execute("ALTER TABLE students ADD COLUMN team_source TEXT")
+            for r in con.execute("SELECT DISTINCT student_id FROM phoenix_events").fetchall():
+                _set_team(con, r["student_id"])
+
+
+def _set_team(con, student_id):
+    """Guess a student's team from their Phoenix mentor duties ('Nhóm 18' in most titles), unless the student set
+    it themselves. Teams are only assigned after the first week, so this may find nothing."""
+    st = con.execute("SELECT team_source FROM students WHERE id=?", (student_id,)).fetchone()
+    if not st or st["team_source"] == "student":
+        return
+    teams = [team_of(r["title"]) for r in con.execute(
+        "SELECT title FROM phoenix_events WHERE student_id=? AND category='mentor_duty'", (student_id,))]
+    teams = [t for t in teams if t]
+    if teams:
+        con.execute("UPDATE students SET team=?, team_source='phoenix' WHERE id=?",
+                    (max(set(teams), key=teams.count), student_id))
+
+
+def set_student_team(con, student_id: str, team) -> str:
+    """Team typed by the student ('18', 'Nhóm 18'). Empty clears it and falls back to the Phoenix guess.
+    Returns the team now in effect (or None)."""
+    raw = str(team or "").strip()
+    with con:
+        if not raw:
+            con.execute("UPDATE students SET team=NULL, team_source=NULL WHERE id=?", (student_id,))
+            _set_team(con, student_id)
+        else:
+            digits = re.sub(r"\D", "", raw)
+            if not digits or len(digits) > 3:
+                raise ValueError("Số nhóm không hợp lệ.")
+            con.execute("UPDATE students SET team=?, team_source='student' WHERE id=?",
+                        ("Nhóm %d" % int(digits), student_id))
+    return con.execute("SELECT team FROM students WHERE id=?", (student_id,)).fetchone()["team"]
 
 
 def connect(path=None):
@@ -43,6 +106,7 @@ def connect(path=None):
     con = sqlite3.connect(path, check_same_thread=False)
     con.row_factory = sqlite3.Row
     con.executescript(SCHEMA)
+    _migrate(con)
     return con
 
 
@@ -153,6 +217,7 @@ def ingest_phoenix(con, student_id: str, events: list) -> int:
                          int(e["is_deadline"]), e["location"], e["url"]))
         con.execute("UPDATE students SET phoenix_synced_at=? WHERE id=?",
                     (datetime.now(VN).isoformat(timespec="seconds"), student_id))
+        _set_team(con, student_id)
     return len(events)
 
 
@@ -176,9 +241,40 @@ def week(con, student_id: str, monday: str) -> dict:
         items.append({"source": "phoenix", "id": e["uid"], "kind": e["category"], "title": e["title"],
                       "start": e["start"], "end": e["end"], "is_deadline": bool(e["is_deadline"]),
                       "location": e["location"], "url": e["url"]})
+    items = apply_duty_changes(con, st["team"], items, days[0], days[-1])
     items.sort(key=lambda x: x["start"])
-    return {"student_id": student_id, "found": True, "class": st["class"], "days": days, "items": items,
-            "clashes": clashes(items)}
+    return {"student_id": student_id, "found": True, "class": st["class"], "team": st["team"], "days": days,
+            "items": items, "clashes": clashes([i for i in items if not i.get("cancelled")])}
+
+
+def apply_duty_changes(con, team, items, day_from, day_to):
+    """Apply mentor changes: move/cancel Phoenix duties by UID, add slots the mentor created for this team."""
+    changes = {r["id"]: r for r in con.execute("SELECT * FROM duty_changes")}
+    out = []
+    for i in items:
+        c = changes.get(i["id"]) if i["source"] == "phoenix" and i["kind"] == "mentor_duty" else None
+        if c:
+            i = dict(i, start=c["start"], end=c["end"], cancelled=bool(c["cancelled"]), note=c["note"] or "",
+                     changed_by_mentor=True)
+            if not (day_from <= i["start"][:10] <= day_to):
+                continue
+        out.append(i)
+    if team:
+        for c in con.execute("SELECT * FROM duty_changes WHERE source='mentor' AND team=? "
+                             "AND substr(start,1,10) BETWEEN ? AND ?", (team, day_from, day_to)):
+            out.append({"source": "mentor", "id": c["id"], "kind": "mentor_duty", "title": c["team"],
+                        "start": c["start"], "end": c["end"], "is_deadline": False, "location": "", "url": "",
+                        "cancelled": bool(c["cancelled"]), "note": c["note"] or "", "changed_by_mentor": True})
+    # a Phoenix duty moved INTO this week from another week
+    if team:
+        here = {i["id"] for i in out}
+        for c in changes.values():
+            if c["source"] == "phoenix" and c["team"] == team and c["id"] not in here \
+                    and day_from <= c["start"][:10] <= day_to:
+                out.append({"source": "phoenix", "id": c["id"], "kind": "mentor_duty", "title": c["team"],
+                            "start": c["start"], "end": c["end"], "is_deadline": False, "location": "", "url": "",
+                            "cancelled": bool(c["cancelled"]), "note": c["note"] or "", "changed_by_mentor": True})
+    return out
 
 
 def clashes(items: list) -> list:

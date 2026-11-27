@@ -18,6 +18,11 @@ The **graded AI slice** is the leave-request workflow in `codebase/agent.py` (se
   (Phoenix feed), `codebase/mail_ingest.py` (timetable from .eml/inbox), `codebase/store.py` (SQLite at
   `data/private/app.db`: `ingest_tkb`, `ingest_phoenix`, `week(student_id, monday)` with clashes).
   CLI: `python3 scripts/ingest.py inbox|tkb|phoenix|week`. Tests: `.venv/bin/pytest -q tests`.
+- Roles (branch backend-roles): `codebase/auth.py` (accounts, PBKDF2 passwords, cookie sessions, lockout),
+  `codebase/admin.py` (admin timetable edits), `codebase/duties.py` (mentor duty changes layered over Phoenix).
+  Only admins and mentors sign in; students have no account: they enter their student ID (+ optional team, editable
+  in settings; a typed team beats the Phoenix guess), kept in a plain cookie. First admin:
+  `python3 scripts/users.py create-admin --username <name>`. Route list: top of `codebase/web/server.py`, or `/docs`.
 - Phoenix feed URLs are secrets. Never print, log, commit, or send them to the model.
 
 ## Hard rules (in addition to AGENTS.md)

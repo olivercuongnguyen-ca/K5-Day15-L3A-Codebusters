@@ -26,7 +26,7 @@ async function api(path, opts) {
 }
 const post = (path, data) => api(path, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)});
 const weekUrl = monday => state.share ? `/api/shared/${state.share}?monday=${monday}`
-  : `/api/week?student_id=${encodeURIComponent(state.sid)}&monday=${monday}`;
+  : `/api/week?monday=${monday}`;
 
 /* ---------- Week ---------- */
 async function loadWeek() {
@@ -78,8 +78,9 @@ function evCard(x, clashIds, extra = '') {
   const room = x.source === 'tkb'
     ? (x.kind === 'ONL' ? `<span class="room">${icon('i-video')}Online</span>` : x.my_room ? `<span class="room">${icon('i-pin')}${esc(x.my_room)}</span>` : '<span class="room">Chưa có phòng</span>')
     : (x.location ? `<span class="room">${icon('i-video')}Online</span>` : '');
-  const clash = clashIds.has(x.id) ? `<span class="clashtag">${icon('i-alert')}Trùng giờ</span>` : '';
-  return `<button class="ev ${x.kind}${clash ? ' clash' : ''}" data-id="${esc(x.id)}"><span class="t">${hm(x.start)}<br>${hm(x.end)}</span><span class="n">${esc(x.title)}</span>${room}${clash}${extra}</button>`;
+  const clash = !x.cancelled && clashIds.has(x.id) ? `<span class="clashtag">${icon('i-alert')}Trùng giờ</span>` : '';
+  if (x.changed_by_mentor) extra = `<span class="mtag">${x.cancelled ? 'Mentor đã huỷ ca này' : 'Mentor đã đổi lịch'}${x.note ? ': ' + esc(x.note) : ''}</span>` + extra;
+  return `<button class="ev ${x.kind}${clash ? ' clash' : ''}${x.cancelled ? ' cancelled' : ''}" data-id="${esc(x.id)}"><span class="t">${hm(x.start)}<br>${hm(x.end)}</span><span class="n">${esc(x.title)}</span>${room}${clash}${extra}</button>`;
 }
 
 /* Daily: hour-based. Today shows only what is ongoing or still ahead. */
@@ -197,7 +198,7 @@ async function loadSummary() {
   const btn = $('#sumbtn'); btn.disabled = true;
   $('#sumbody').className = ''; $('#sumbody').innerHTML = '<div class="skel"></div><div class="skel" style="width:80%"></div><div class="skel" style="width:60%"></div>';
   try {
-    const s = await api(`/api/summary?student_id=${encodeURIComponent(state.sid)}&monday=${state.monday}`);
+    const s = await api(`/api/summary?monday=${state.monday}`);
     $('#sumbody').innerHTML = `<p class="sumhl">${esc(s.headline)}</p>
       <ul class="sumlist">${s.items.map(i => `<li><span class="w">${esc(i.when)}</span><span>${esc(i.what)}</span></li>`).join('')}</ul>
       ${s.tip ? `<p class="tip">${esc(s.tip)}</p>` : ''}
@@ -315,7 +316,7 @@ async function submitLeave(ev) {
   btn.disabled = true; btn.innerHTML = '<span class="spin" aria-hidden="true"></span>Đang soạn…';
   out.innerHTML = '';
   try {
-    const r = await post('/api/leave', {student_id: state.sid, session: sessionHint(x), reason: $('#reason').value, evidence_type: $('#evidence').value});
+    const r = await post('/api/leave', {session: sessionHint(x), reason: $('#reason').value, evidence_type: $('#evidence').value});
     if (r.status !== 'ready') {
       out.innerHTML = `<div class="ask ${r.status === 'refuse' ? 'refuse' : ''}">${esc(r.question)}</div>`;
     } else {
@@ -344,7 +345,7 @@ async function submitLeave(ev) {
 /* ---------- Settings: Phoenix, push, sync, share, ingest ---------- */
 async function loadCalendarLinks() {
   try {
-    const l = await api(`/api/calendar-links?student_id=${encodeURIComponent(state.sid)}`);
+    const l = await api('/api/calendar-links');
     $('#gcal').href = l.google; $('#ocal').href = l.outlook; $('#copyics').dataset.url = l.ics;
   } catch (e) {}
 }
@@ -362,7 +363,7 @@ async function enablePush() {
     const reg = await navigator.serviceWorker.ready;
     const {key} = await api('/api/push/key');
     const sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: b64ToBytes(key)});
-    await post('/api/push/subscribe', {student_id: state.sid, sub: sub.toJSON()});
+    await post('/api/push/subscribe', {sub: sub.toJSON()});
     msg.className = 'msg ok'; msg.textContent = 'Đã bật thông báo trên thiết bị này.';
     $('#pushon').hidden = true; $('#pushtest').hidden = false;
   } catch (e) { msg.className = 'msg err'; msg.textContent = 'Không bật được thông báo: ' + e.message; }
@@ -378,8 +379,7 @@ async function pushState() {
 async function start(sid) {
   state.sid = sid.trim().toUpperCase(); state.share = null;
   state.day = iso(new Date()); state.monday = mondayOf(new Date());
-  if (!(await loadWeek())) { ls.set('sid', null); $('#whomsg').className = 'msg err'; $('#whomsg').textContent = 'Không tìm thấy mã học viên này trong thời khoá biểu hiện tại.'; $('#grid').innerHTML = ''; return; }
-  ls.set('sid', state.sid);
+  if (!(await loadWeek())) { $('#whomsg').className = 'msg err'; $('#whomsg').textContent = 'Không tìm thấy mã học viên này trong thời khoá biểu hiện tại.'; $('#grid').innerHTML = ''; return; }
   $('#empty').hidden = true; $('#app').hidden = false; $('#tabbar').hidden = false;
   $('#whochip').hidden = false; $('#whoid').textContent = state.sid;
   loadCalendarLinks(); pushState();
@@ -395,8 +395,72 @@ async function startShared(token) {
   }
 }
 
-$('#who').addEventListener('submit', e => { e.preventDefault(); if ($('#sid').value.trim()) start($('#sid').value); });
-$('#switch').addEventListener('click', () => { ls.set('sid', null); location.hash = ''; location.reload(); });
+/* ---------- Sign-in ---------- */
+$('#stafftoggle').addEventListener('click', () => { $('#who').hidden = true; $('#stafflogin').hidden = false; $('#uname').focus(); });
+$('#studenttoggle').addEventListener('click', () => { $('#stafflogin').hidden = true; $('#who').hidden = false; });
+$('#who').addEventListener('submit', async e => {
+  e.preventDefault();
+  const msg = $('#whomsg');
+  msg.className = 'msg'; msg.textContent = 'Đang mở lịch…';
+  try {
+    const me = await post('/api/student/enter', {student_id: $('#sid').value.trim(), team: $('#team0').value.trim()});
+    msg.textContent = ''; onStudent(me);
+  } catch (err) { msg.className = 'msg err'; msg.textContent = err.message; }
+});
+$('#stafflogin').addEventListener('submit', async e => {
+  e.preventDefault();
+  const msg = $('#stafmsg');
+  msg.className = 'msg'; msg.textContent = 'Đang đăng nhập…';
+  try {
+    const me = await post('/api/auth/login', {username: $('#uname').value.trim(), password: $('#pw').value});
+    $('#pw').value = ''; msg.textContent = ''; onStaff(me);
+  } catch (err) { msg.className = 'msg err'; msg.textContent = err.message; }
+});
+$('#pwform').addEventListener('submit', async e => {
+  e.preventDefault();
+  try {
+    await post('/api/auth/password', {old: $('#pwold').value, new: $('#pwnew').value});
+    $('#pwform').hidden = true; onStaff(await api('/api/auth/me'));
+  } catch (err) { $('#pwmsg').className = 'msg err'; $('#pwmsg').textContent = err.message; }
+});
+$('#switch').addEventListener('click', async () => {
+  try { await post(state.staff ? '/api/auth/logout' : '/api/student/exit', {}); } catch (e) {}
+  location.hash = ''; location.reload();
+});
+
+function showTeam(me) {
+  $('#teamstate').innerHTML = me.team
+    ? `Bạn đang ở <b>${esc(me.team)}</b>${me.team_set_by === 'phoenix' ? ' (lấy từ lịch Phoenix)' : ''}. Lịch mentor duty và thay đổi của mentor sẽ theo nhóm này.`
+    : 'Chưa có nhóm. Khi được chia nhóm, nhập số nhóm để nhận lịch và thông báo mentor duty.';
+  $('#teamin').value = me.team ? me.team.replace(/\D/g, '') : '';
+}
+$('#teamform').addEventListener('submit', async e => {
+  e.preventDefault();
+  try {
+    const me = await api('/api/student/team', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({team: $('#teamin').value.trim()})});
+    showTeam(me); $('#teammsg').className = 'msg ok'; $('#teammsg').textContent = me.team ? 'Đã lưu.' : 'Đã xoá số nhóm.';
+    loadWeek();
+  } catch (err) { $('#teammsg').className = 'msg err'; $('#teammsg').textContent = err.message; }
+});
+
+function onStudent(me) {
+  state.staff = false;
+  $('#who').hidden = true; $('#caidat .admin').hidden = true;
+  showTeam(me);
+  start(me.student_id);
+}
+
+function onStaff(me) {
+  state.staff = true; state.me = me;
+  $('#who').hidden = true; $('#stafflogin').hidden = true;
+  $('#whochip').hidden = false; $('#whoid').textContent = me.username; $('#switch').textContent = 'Đăng xuất';
+  if (me.must_change) { $('#pwform').hidden = false; return; }
+  $('#staff').hidden = false;
+  $('#staffh').textContent = me.role === 'admin' ? 'Tài khoản admin' : 'Tài khoản mentor';
+  $('#stafftext').textContent = me.role === 'admin'
+    ? `Xin chào ${me.display_name}. Bạn có thể cập nhật thời khoá biểu, sửa buổi học và quản lý tài khoản mentor.`
+    : `Xin chào ${me.display_name}. Bạn phụ trách: ${me.teams.join(', ') || 'chưa được gán nhóm'}.`;
+}
 $('#prev').addEventListener('click', () => go(state.view === 'day' ? addDays(state.day, -1) : addDays(state.monday, -7)));
 $('#next').addEventListener('click', () => go(state.view === 'day' ? addDays(state.day, 1) : addDays(state.monday, 7)));
 $('#today').addEventListener('click', () => go(iso(new Date())));
@@ -417,13 +481,13 @@ document.querySelectorAll('.fchip').forEach(b => b.addEventListener('click', () 
 $('#team').addEventListener('change', e => { state.team = e.target.value; render(); });
 $('#pushon').addEventListener('click', enablePush);
 $('#pushtest').addEventListener('click', async () => {
-  try { const r = await post('/api/push/test', {student_id: state.sid}); $('#pushmsg').className = 'msg ok'; $('#pushmsg').textContent = `Đã gửi tới ${r.sent} thiết bị.`; }
+  try { const r = await post('/api/push/test', {}); $('#pushmsg').className = 'msg ok'; $('#pushmsg').textContent = `Đã gửi tới ${r.sent} thiết bị.`; }
   catch (e) { $('#pushmsg').className = 'msg err'; $('#pushmsg').textContent = e.message; }
 });
 $('#copyics').addEventListener('click', e => copy(e.currentTarget.dataset.url || '', e.currentTarget));
 $('#sharebtn').addEventListener('click', async e => {
   try {
-    const r = await api(`/api/share?student_id=${encodeURIComponent(state.sid)}`);
+    const r = await api('/api/share');
     $('#sharemsg').className = 'msg ok'; $('#sharemsg').innerHTML = `Link: <code>${esc(r.url)}</code>`;
     if (navigator.share) { navigator.share({title: 'Lịch AI20K của mình', url: r.url}).catch(() => {}); } else { copy(r.url, e.currentTarget); }
   } catch (err) { $('#sharemsg').className = 'msg err'; $('#sharemsg').textContent = err.message; }
@@ -432,7 +496,7 @@ $('#phxform').addEventListener('submit', async e => {
   e.preventDefault();
   const msg = $('#phxmsg'); msg.className = 'msg'; msg.textContent = 'Đang tải lịch Phoenix…';
   try {
-    const r = await post('/api/phoenix', {student_id: state.sid, url: $('#phxurl').value});
+    const r = await post('/api/phoenix', {url: $('#phxurl').value});
     msg.className = 'msg ok'; msg.textContent = `Đã kết nối: ${r.events} sự kiện.`; $('#phxurl').value = '';
     loadWeek();
   } catch (err) { msg.className = 'msg err'; msg.textContent = err.message; }
@@ -444,7 +508,7 @@ $('#ingest').addEventListener('submit', async e => {
   const fd = new FormData(); fd.append('file', f);
   msg.className = 'msg'; msg.textContent = 'Đang xử lý…';
   try {
-    const r = await api('/api/ingest', {method: 'POST', body: fd});
+    const r = await api('/api/admin/ingest', {method: 'POST', body: fd});
     msg.className = 'msg ok';
     msg.textContent = r.new ? `Đã cập nhật: ${r.students} học viên, ${r.room_changes} phòng thay đổi.` : 'Bản này đã có, không có gì thay đổi.';
     if (state.sid) loadWeek();
@@ -455,4 +519,4 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').cat
 api('/api/buildings').then(b => state.buildings = b).catch(() => {});
 const shareTok = (location.hash.match(/^#share-([\w-]+)$/) || [])[1];
 if (shareTok) startShared(shareTok);
-else { const saved = ls.get('sid'); if (saved) { $('#sid').value = saved; start(saved); } }
+else api('/api/student/me').then(onStudent).catch(() => api('/api/auth/me').then(onStaff).catch(() => {}));
