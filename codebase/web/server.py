@@ -305,6 +305,7 @@ def _has_timetable(con):
 
 @app.get("/api/setup/status")
 def setup_status():
+    """Whether a timetable has been loaded. A fresh install has none, so the start screen shows an upload card."""
     con = store.connect()
     ver = con.execute("SELECT received_at FROM tkb_versions ORDER BY received_at DESC LIMIT 1").fetchone()
     return {"timetable": ver is not None, "received_at": ver["received_at"] if ver else None,

@@ -170,3 +170,16 @@ def test_admin_reset_password_invalidates_sessions(env):
     assert m.get("/api/mentor/duties").status_code == 401  # old session is gone
     m2 = client(app, "mentor.a", temp)
     assert m2.get("/api/mentor/duties").status_code == 403  # must change the temporary password first
+
+
+def test_first_timetable_upload_needs_no_sign_in_only_once(tmp_path, monkeypatch):
+    monkeypatch.setattr(store, "DB_PATH", str(tmp_path / "empty.db"))
+    from codebase.web import server
+    c = TestClient(server.app)
+    assert c.get("/api/setup/status").json()["timetable"] is False
+    files = {"file": ("Thoi_khoa_bieu_TEST.html", tkb_html().encode("utf-8"), "text/html")}
+    r = c.post("/api/setup/timetable", files=files)
+    assert r.status_code == 200 and r.json()["students"] == 2
+    assert c.get("/api/setup/status").json()["timetable"] is True
+    assert c.post("/api/setup/timetable", files=files).status_code == 403  # later updates: admin only
+    assert c.post("/api/admin/ingest", files=files).status_code == 401

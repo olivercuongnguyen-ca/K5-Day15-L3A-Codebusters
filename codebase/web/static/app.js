@@ -379,11 +379,38 @@ async function pushState() {
 async function start(sid) {
   state.sid = sid.trim().toUpperCase(); state.share = null;
   state.day = iso(new Date()); state.monday = mondayOf(new Date());
-  if (!(await loadWeek())) { $('#whomsg').className = 'msg err'; $('#whomsg').textContent = 'Không tìm thấy mã học viên này trong thời khoá biểu hiện tại.'; $('#grid').innerHTML = ''; return; }
+  if (!(await loadWeek())) {
+    $('#grid').innerHTML = ''; $('#whomsg').className = 'msg err';
+    $('#whomsg').textContent = 'Không tìm thấy mã học viên này trong thời khoá biểu hiện tại.';
+    return false;
+  }
   $('#empty').hidden = true; $('#app').hidden = false; $('#tabbar').hidden = false;
   $('#whochip').hidden = false; $('#whoid').textContent = state.sid;
   loadCalendarLinks(); pushState();
+  return true;
 }
+
+/* ---------- First run: no timetable yet ---------- */
+async function loadSetup() {
+  try { state.setup = await api('/api/setup/status'); } catch (e) { return; }
+  const empty = !state.setup.timetable;
+  $('#setup').hidden = !empty;
+  $('#whoh').textContent = empty ? 'Bước 2: xem lịch của bạn' : 'Xem lịch của bạn';
+}
+$('#setup').addEventListener('submit', async e => {
+  e.preventDefault();
+  const msg = $('#setupmsg'), f = $('#setupfile').files[0];
+  if (!f) return;
+  const fd = new FormData(); fd.append('file', f);
+  msg.className = 'msg'; msg.textContent = 'Đang đọc file…';
+  try {
+    const r = await api('/api/setup/timetable', {method: 'POST', body: fd});
+    msg.className = 'msg ok';
+    msg.textContent = r.new ? `Đã tải: ${r.students} học viên. Giờ nhập mã học viên của bạn ở dưới.` : 'Bản này đã có sẵn, không có gì thay đổi.';
+    await loadSetup(); $('#setup').hidden = false; $('#whomsg').textContent = '';
+    $('#sid').focus();
+  } catch (err) { msg.className = 'msg err'; msg.textContent = err.message; }
+});
 
 async function startShared(token) {
   state.share = token; state.sid = null; state.day = iso(new Date()); state.monday = mondayOf(new Date());
@@ -396,16 +423,32 @@ async function startShared(token) {
 }
 
 /* ---------- Sign-in ---------- */
-$('#stafftoggle').addEventListener('click', () => { $('#who').hidden = true; $('#stafflogin').hidden = false; $('#uname').focus(); });
-$('#studenttoggle').addEventListener('click', () => { $('#stafflogin').hidden = true; $('#who').hidden = false; });
+$('#stafftoggle').addEventListener('click', () => { $('#who').hidden = true; $('#setup').hidden = true; $('#stafflogin').hidden = false; $('#uname').focus(); });
+$('#studenttoggle').addEventListener('click', () => { $('#stafflogin').hidden = true; $('#who').hidden = false; loadSetup(); });
 $('#who').addEventListener('submit', async e => {
   e.preventDefault();
   const msg = $('#whomsg');
   msg.className = 'msg'; msg.textContent = 'Đang mở lịch…';
+  let me;
+  try { me = await post('/api/student/enter', {student_id: $('#sid').value.trim(), team: $('#team0').value.trim()}); }
+  catch (err) {
+    msg.className = 'msg err';
+    msg.textContent = state.setup && !state.setup.timetable ? 'App chưa có thời khoá biểu. Tải file thời khoá biểu ở bước 1 trước.'
+      : err.message + ' Nếu thời khoá biểu đã cũ, admin cần tải bản mới.';
+    return;
+  }
+  msg.textContent = '';
+  if (!(await onStudent(me))) return;
+  const url = $('#phx0').value.trim();  // optional Phoenix link: a bad link warns but never blocks the schedule
+  if (!url) return;
   try {
-    const me = await post('/api/student/enter', {student_id: $('#sid').value.trim(), team: $('#team0').value.trim()});
-    msg.textContent = ''; onStudent(me);
-  } catch (err) { msg.className = 'msg err'; msg.textContent = err.message; }
+    const r = await post('/api/phoenix', {url});
+    $('#phx0').value = '';
+    await loadWeek();
+    $('#notices').insertAdjacentHTML('afterbegin', `<div class="notice info">${icon('i-link')}<span>Đã kết nối lịch Phoenix: ${r.events} sự kiện.</span></div>`);
+  } catch (err) {
+    $('#notices').insertAdjacentHTML('afterbegin', `<div class="notice warn">${icon('i-alert')}<span>Chưa kết nối được lịch Phoenix: ${esc(err.message)} Thử lại trong <a href="#caidat">Cài đặt</a>.</span></div>`);
+  }
 });
 $('#stafflogin').addEventListener('submit', async e => {
   e.preventDefault();
@@ -443,16 +486,16 @@ $('#teamform').addEventListener('submit', async e => {
   } catch (err) { $('#teammsg').className = 'msg err'; $('#teammsg').textContent = err.message; }
 });
 
-function onStudent(me) {
+async function onStudent(me) {
   state.staff = false;
-  $('#who').hidden = true; $('#caidat .admin').hidden = true;
+  $('#setup').hidden = true; $('#caidat .admin').hidden = true;
   showTeam(me);
-  start(me.student_id);
+  return start(me.student_id);
 }
 
 function onStaff(me) {
   state.staff = true; state.me = me;
-  $('#who').hidden = true; $('#stafflogin').hidden = true;
+  $('#who').hidden = true; $('#stafflogin').hidden = true; $('#setup').hidden = true;
   $('#whochip').hidden = false; $('#whoid').textContent = me.username; $('#switch').textContent = 'Đăng xuất';
   if (me.must_change) { $('#pwform').hidden = false; return; }
   $('#staff').hidden = false;
@@ -519,4 +562,4 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').cat
 api('/api/buildings').then(b => state.buildings = b).catch(() => {});
 const shareTok = (location.hash.match(/^#share-([\w-]+)$/) || [])[1];
 if (shareTok) startShared(shareTok);
-else api('/api/student/me').then(onStudent).catch(() => api('/api/auth/me').then(onStaff).catch(() => {}));
+else loadSetup().then(() => api('/api/student/me').then(onStudent).catch(() => api('/api/auth/me').then(onStaff).catch(() => {})));

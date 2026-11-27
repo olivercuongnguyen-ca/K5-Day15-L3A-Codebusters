@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="Lịch AI20K">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="/static/app.css?v=12">
+<link rel="stylesheet" href="/static/app.css?v=13">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -49,13 +49,24 @@
   <section id="empty" class="empty">
     <h1>Một lịch cho cả tuần: lớp học, phòng học và lịch Phoenix</h1>
     <p class="muted">Xem phòng của bạn, nhận nhắc hạn nộp, đồng bộ sang Google Calendar hoặc Outlook, và xin nghỉ chỉ trong vài bước.</p>
+    <form id="setup" class="card stack" hidden>
+      <h2 class="formh" id="setuph">Bước 1: tải thời khoá biểu</h2>
+      <p class="hint" id="setuptext">App chưa có thời khoá biểu (lần chạy đầu tiên). Mở email lịch học hằng tuần của ban đào tạo, tải file đính kèm <code>Thoi_khoa_bieu_….html</code> rồi chọn file đó ở đây. File chỉ lưu trên máy chạy app, không đưa lên GitHub.</p>
+      <div class="field"><label for="setupfile">File thời khoá biểu (.html)</label>
+        <input id="setupfile" type="file" accept=".html,.htm,.eml" required></div>
+      <button class="btn primary" type="submit">Tải lên</button>
+      <p id="setupmsg" class="msg" role="status"></p>
+    </form>
     <form id="who" class="card stack" autocomplete="on">
-      <h2 class="formh">Xem lịch của bạn</h2>
+      <h2 class="formh" id="whoh">Xem lịch của bạn</h2>
       <div class="field"><label for="sid">Mã học viên</label>
         <input id="sid" name="student_id" placeholder="2A2026xxxxx" spellcheck="false" autocapitalize="characters" required></div>
       <div class="field"><label for="team0">Số nhóm <span class="muted">(không bắt buộc)</span></label>
         <input id="team0" inputmode="numeric" placeholder="vd 18" maxlength="9" autocomplete="off">
         <p class="hint">Tuần đầu chưa chia nhóm thì để trống, sau này sửa trong Cài đặt.</p></div>
+      <div class="field"><label for="phx0">Link lịch Phoenix <span class="muted">(không bắt buộc)</span></label>
+        <input id="phx0" type="url" inputmode="url" placeholder="https://phoenix.note.transformerlabs.ai/api/events/feed/….ics">
+        <p class="hint">Để thấy workshop, mentor duty và hạn nộp: trên Phoenix vào <b>Lịch sự kiện</b> → <b>Nhắc lịch qua Google Calendar</b>, sao chép link <code>.ics</code>. Có thể thêm sau trong Cài đặt.</p></div>
       <button class="btn primary" type="submit">Xem lịch của tôi</button>
       <p id="whomsg" class="msg" role="status"></p>
       <button class="btn ghost sm" type="button" id="stafftoggle">Admin / mentor đăng nhập</button>
@@ -250,6 +261,6 @@
   </div>
 </aside>
 
-<script src="/static/app.js?v=12"></script>
+<script src="/static/app.js?v=13"></script>
 </body>
 </html>
