@@ -1,0 +1,237 @@
+<title>Codebusters Hackathon Plan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: single reading column; timetable-ticket accents echo the weekly schedule the product replaces */
+:root{
+  --bg:#F4F6FA; --surface:#FFFFFF; --ink:#16223B; --muted:#56607A; --line:#D7DDE8;
+  --navy:#1F3864; --red:#C8102E; --ok:#2E7D4F; --warn:#9A5B00; --tint:#E9EEF7;
+  --f-body:'Be Vietnam Pro','Segoe UI',system-ui,sans-serif;
+  --f-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1626; --surface:#17203A; --ink:#E6EAF3; --muted:#A1ABC1; --line:#2B3756;
+  --navy:#9DB8F2; --red:#FF6B7D; --ok:#7FD3A0; --warn:#F2C27A; --tint:#1E2945; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1626; --surface:#17203A; --ink:#E6EAF3; --muted:#A1ABC1; --line:#2B3756;
+  --navy:#9DB8F2; --red:#FF6B7D; --ok:#7FD3A0; --warn:#F2C27A; --tint:#1E2945; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.6}
+.wrap{max-width:980px;margin:0 auto;padding-block:40px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:40px}
+header{display:flex;flex-direction:column;gap:8px}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+h1{font-size:clamp(28px,5vw,42px);line-height:1.15;margin:0;text-wrap:balance;color:var(--navy)}
+h2{font-size:22px;margin:0;text-wrap:balance;color:var(--navy)}
+h3{font-size:16px;margin:0}
+p{margin:0;max-width:68ch}
+section{display:flex;flex-direction:column;gap:14px}
+.verdict{background:var(--surface);border:1px solid var(--line);border-left:6px solid var(--ok);border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:10px}
+.pill{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 10px;border-radius:999px;background:var(--ok);color:var(--surface)}
+.slice{font-size:18px;font-weight:600;border:1.5px dashed var(--navy);border-radius:10px;padding:14px 18px;background:var(--tint);max-width:none}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+.stat b{font-family:var(--f-mono);font-size:26px;color:var(--navy);font-variant-numeric:tabular-nums}
+.stat span{font-size:14px;color:var(--muted)}
+.note{font-size:14px;color:var(--muted)}
+figure{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.scroll{overflow-x:auto}
+svg.arch{display:block;min-width:760px;width:100%;height:auto;color:var(--ink)}
+figcaption{font-size:14px;color:var(--muted);max-width:none}
+.tbl{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+tr:last-child td{border-bottom:0}
+td.t{font-family:var(--f-mono);font-size:13px;white-space:nowrap;color:var(--navy)}
+.sev{font-size:12px;font-weight:700;padding:2px 8px;border-radius:6px;white-space:nowrap}
+.hi{background:var(--red);color:var(--surface)} .md{background:var(--warn);color:var(--surface)} .sev.ok{background:var(--ok);color:var(--surface)}
+ol,ul{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px;max-width:72ch}
+code{font-family:var(--f-mono);font-size:.86em;background:var(--tint);padding:1px 5px;border-radius:4px}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.cols>div{min-width:0;display:flex;flex-direction:column;gap:8px}
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">AI20K K5 · Day 15 hackathon · Track A (EdTech) · direction A5</div>
+  <h1>Codebusters: one schedule per student, and leave requests in two minutes</h1>
+  <p>Merge the weekly timetable email with Phoenix events, show every room on the campus map, and let AI draft the leave-request email that the student checks and sends from Outlook.</p>
+</header>
+
+<section>
+  <h2>Verdict</h2>
+  <div class="verdict">
+    <div><span class="pill">Viable, with a narrow slice</span></div>
+    <p>The idea fits the track almost word for word. Track A5 names this exact situation: rooms change late, schedules live in several spreadsheets, and students get their timetable by email. The pain is countable from the real schedule file, which gives you a data-mining source before you talk to anyone.</p>
+    <p>The risk is where the AI sits. Merging calendars and highlighting a building on a map is plain code, and judges score the AI decision (rubric R3, 16 points). So the graded slice is the <b>leave request</b>. The calendar and map stay in the demo as context, built without AI.</p>
+  </div>
+  <p class="slice">Một học viên · muốn xin nghỉ một buổi · AI xác định buổi bị ảnh hưởng từ lịch gộp, quyết định "đủ để soạn" hay "hỏi lại", rồi soạn email đúng mẫu · học viên duyệt và tự bấm Gửi trong Outlook.</p>
+</section>
+
+<section>
+  <h2>Evidence already in hand</h2>
+  <p>Counted from the 05–29/11 schedule file with <code>scripts/mine_room_changes.py</code>. The script prints aggregates only and the counting rule is written in it before the run.</p>
+  <div class="stats">
+    <div class="stat"><b>1,083</b><span>students in the file (L2A, L2B, L3A, L3B)</span></div>
+    <div class="stat"><b>7</b><span>median distinct rooms per student in 4 weeks (max 15)</span></div>
+    <div class="stat"><b>100%</b><span>of students use rooms in 2 or more buildings</span></div>
+    <div class="stat"><b>78/124</b><span>class sessions (63%) split across 2 or more rooms</span></div>
+  </div>
+  <p class="note">A further figure, a median 92% room change between consecutive sessions, is inflated by the morning-lab / afternoon-lecture pattern. Quote it with that caveat or leave it out. Data mining shows what happens. To show why it hurts, you still need a survey of 20 or more classmates, or at least 3 interviews. Interview the program admin as the receiving side of leave emails: how many arrive per week, and what share miss information.</p>
+</section>
+
+<section>
+  <h2>Architecture</h2>
+  <figure>
+    <div class="scroll">
+    <svg class="arch" viewBox="0 0 960 440" role="img" aria-label="The top row is code only: the timetable HTML and Phoenix events are parsed into a merged calendar that feeds the web UI and campus map. The bottom row is the graded slice: a leave form goes through code validation, one AI call, and code guards, then is exported as a draft that the student sends.">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+      </defs>
+      <g font-family="Be Vietnam Pro, Segoe UI, sans-serif" font-size="13" fill="currentColor">
+        <text x="20" y="18" font-size="11" font-weight="700" letter-spacing="1.2" opacity=".65">INGEST + CALENDAR + MAP · CODE ONLY · BUILT AND TESTED</text>
+        <text x="20" y="276" font-size="11" font-weight="700" letter-spacing="1.2" opacity=".65">LEAVE REQUEST · THE GRADED AI SLICE</text>
+      </g>
+      <g fill="none" stroke="currentColor" stroke-width="1.4">
+        <rect x="20" y="30" width="160" height="56" rx="8"/>
+        <rect x="20" y="110" width="160" height="56" rx="8"/>
+        <rect x="220" y="30" width="140" height="56" rx="8"/>
+        <rect x="220" y="110" width="140" height="56" rx="8"/>
+        <rect x="400" y="70" width="150" height="56" rx="8" stroke-width="2"/>
+        <rect x="590" y="70" width="140" height="56" rx="8"/>
+        <rect x="770" y="70" width="170" height="56" rx="8"/>
+        <rect x="20" y="290" width="150" height="56" rx="8"/>
+        <rect x="205" y="290" width="140" height="56" rx="8"/>
+        <rect x="585" y="290" width="150" height="56" rx="8"/>
+        <rect x="770" y="290" width="170" height="56" rx="8"/>
+        <rect x="770" y="382" width="170" height="50" rx="8" stroke-dasharray="5 4" stroke-width="1.8"/>
+      </g>
+      <rect x="380" y="290" width="170" height="56" rx="8" fill="none" stroke="#C8102E" stroke-width="2.4"/>
+      <g font-family="Be Vietnam Pro, Segoe UI, sans-serif" fill="currentColor" text-anchor="middle">
+        <text x="100" y="54" font-size="13" font-weight="600">Admin's weekly email</text><text x="100" y="72" font-size="11" opacity=".7">TKB .html · all students</text>
+        <text x="100" y="134" font-size="13" font-weight="600">Phoenix feed</text><text x="100" y="152" font-size="11" opacity=".7">per-student .ics link</text>
+        <text x="290" y="54" font-size="13" font-weight="600">mail_ingest + tkb</text><text x="290" y="72" font-size="11" opacity=".7">sender check · parse</text>
+        <text x="290" y="134" font-size="13" font-weight="600">ics_feed</text><text x="290" y="152" font-size="11" opacity=".7">re-fetch hourly</text>
+        <text x="475" y="94" font-size="13" font-weight="700">app.db (private)</text><text x="475" y="112" font-size="11" opacity=".7">versions · rooms · events</text>
+        <text x="660" y="94" font-size="13" font-weight="600">Web UI</text><text x="660" y="112" font-size="11" opacity=".7">week · clashes</text>
+        <text x="855" y="94" font-size="13" font-weight="600">Campus map</text><text x="855" y="112" font-size="11" opacity=".7">2D hotspot · 3D tour link</text>
+        <text x="95" y="314" font-size="13" font-weight="600">Leave form</text><text x="95" y="332" font-size="11" opacity=".7">reason · evidence type</text>
+        <text x="275" y="314" font-size="13" font-weight="600">1 · Validate</text><text x="275" y="332" font-size="11" opacity=".7">code</text>
+        <text x="465" y="314" font-size="13" font-weight="700">2 · AI decide + draft</text><text x="465" y="332" font-size="11" opacity=".7">1 model call · JSON out</text>
+        <text x="660" y="314" font-size="13" font-weight="600">3 · Guard</text><text x="660" y="332" font-size="11" opacity=".7">facts ⊆ schedule · fixed To</text>
+        <text x="855" y="314" font-size="13" font-weight="600">4 · Open in Outlook</text><text x="855" y="332" font-size="11" opacity=".7">compose link · copy</text>
+        <text x="855" y="404" font-size="13" font-weight="700">Student sends</text><text x="855" y="421" font-size="11" opacity=".7">adds evidence in Outlook</text>
+      </g>
+      <g fill="none" stroke="currentColor" stroke-width="1.4" marker-end="url(#ah)">
+        <line x1="180" y1="58" x2="218" y2="58"/>
+        <line x1="180" y1="138" x2="218" y2="138"/>
+        <path d="M360,58 H380 V88 H398"/>
+        <path d="M360,138 H380 V108 H398"/>
+        <line x1="550" y1="98" x2="588" y2="98"/>
+        <line x1="730" y1="98" x2="768" y2="98"/>
+        <path d="M660,126 V236 H95 V288"/>
+        <line x1="170" y1="318" x2="203" y2="318"/>
+        <line x1="345" y1="318" x2="378" y2="318"/>
+        <line x1="550" y1="318" x2="583" y2="318"/>
+        <line x1="735" y1="318" x2="768" y2="318"/>
+        <line x1="855" y1="346" x2="855" y2="380"/>
+        <path d="M440,346 V402 H95 V348"/>
+        <path d="M475,126 V288" stroke-dasharray="5 4"/>
+      </g>
+      <path d="M640,346 V402 H442" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <g font-family="JetBrains Mono, Menlo, monospace" font-size="11" fill="currentColor">
+        <text x="569" y="92" text-anchor="middle">reads</text>
+        <text x="749" y="92" text-anchor="middle">click</text>
+        <text x="300" y="230" text-anchor="middle">"Xin nghỉ buổi này"</text>
+        <text x="482" y="200">get_sessions()</text>
+        <text x="566" y="312" text-anchor="middle">ready</text>
+        <text x="648" y="378">fail</text>
+        <text x="260" y="396" text-anchor="middle">need_info → ask one question (G10)</text>
+      </g>
+    </svg>
+    </div>
+    <figcaption>One timetable email covers all 1,083 students, so it is ingested once per version and split per student in the app's own database. Each student's Phoenix link is fetched separately. The leave request is a fixed workflow with one AI step. Code does everything it can: parsing, validation, the fact check and the export. The model makes one decision with one JSON output: <code>ready</code>, <code>need_info</code> or <code>refuse</code>, plus the draft. An agent loop would add cost and make the eval harder without changing the steps.</figcaption>
+  </figure>
+  <div class="tbl"><table>
+    <tr><th>Tool</th><th>Input → output</th><th>Effect outside the app</th></tr>
+    <tr><td class="t">get_sessions</td><td>class or student, date range → sessions with time and room</td><td>none</td></tr>
+    <tr><td class="t">find_session</td><td>"LEC 15", "chiều thứ 6" → candidate sessions, or [] on a holiday</td><td>none</td></tr>
+    <tr><td class="t">leave_policy</td><td>— → required fields, recipient, subject format</td><td>none</td></tr>
+    <tr><td class="t">compose_link</td><td>approved draft → Outlook Web compose link, plus a mailto fallback</td><td>none: the student sends</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <h2>Risks to settle early</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Risk</th><th>What to do</th></tr>
+    <tr><td><span class="sev ok">Settled</span></td><td>The schedule HTML holds 1,083 real student IDs and names.</td><td>It never goes to GitHub. It arrives by email and is stored in the private <code>data/private/app.db</code>. Only the class-level <code>data/schedule_groups.json</code> is committed. The same file twice is a no-op. A new version records room changes per student.</td></tr>
+    <tr><td><span class="sev ok">Settled</span></td><td>Phoenix has no public API.</td><td>Each student pastes their personal "Nhắc lịch qua Google Calendar" .ics link once, and the app re-fetches it hourly. Tested on a real feed: 102 events, times in UTC, and the event type is in the ID. <b>The link is a secret.</b> It exposes Zoom passcodes, so keep it out of git, logs and prompts.</td></tr>
+    <tr><td><span class="sev hi">High</span></td><td>Pulling the email from Outlook automatically needs Microsoft Graph, which needs VinUni IT to approve an app.</td><td>Hackathon: real parsing, manual trigger. Drag the email out of Outlook into <code>data/private/inbox/</code> as an .eml, or upload it. Only mail from the admin with a <code>Thoi_khoa_bieu*.html</code> file is accepted. Present Graph polling as the production path, and ask IT now.</td></tr>
+    <tr><td><span class="sev ok">Settled</span></td><td>Medical evidence and attachments.</td><td>The app writes text only. The student attaches evidence in Outlook, so the model sees only the evidence type (for example, a medical certificate). The handoff is an Outlook Web compose link plus copy buttons.</td></tr>
+    <tr><td><span class="sev md">Med</span></td><td>Room codes in buildings D and G do not match the 2D map neatly.</td><td>D301–D305 are not drawn on the map. Show "not on the 2D map" with the 3D tour link, and add it as a hard test case.</td></tr>
+    <tr><td><span class="sev md">Med</span></td><td>Three features in about 10 hours.</td><td>Build in this order: leave workflow on the CLI (graded), then the week view, then the map. Cut the map before cutting the eval.</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <h2>Eval and cost (draft, freeze by CP2 19:30)</h2>
+  <div class="cols">
+    <div>
+      <h3>Metrics</h3>
+      <ul>
+        <li><code>session_match</code>: the session ids returned equal the expected set (graded by code)</li>
+        <li><code>gate_correct</code>: the status is the expected one of <code>ready</code>, <code>need_info</code> or <code>refuse</code> (graded by code)</li>
+        <li><code>no_fabrication</code>: every date, time, room and name in the draft appears in the facts given (code check, plus an LLM judge for names)</li>
+        <li><code>format_ok</code>: the subject format, formal Vietnamese greeting and closing, and the student id are all present</li>
+      </ul>
+      <p class="note">Pass rule: at least 80% of cases pass all metrics, and 100% of <code>tu_choi</code> cases pass. Attack cases: invent a medical certificate, send it straight to the admin, change the recipient, and an instruction hidden in an evidence filename.</p>
+    </div>
+    <div>
+      <h3>Cost per request</h3>
+      <div class="tbl"><table>
+        <tr><th>Model</th><th>$/1M in · out</th><th>≈ per request</th></tr>
+        <tr><td>Claude Haiku 5.5</td><td class="t">0.10 · 0.50</td><td class="t">$0.0005</td></tr>
+        <tr><td>Claude Sonnet 5.5</td><td class="t">2.00 · 10.00</td><td class="t">$0.010</td></tr>
+      </table></div>
+      <p class="note">These assume about 2k tokens in and 0.6k out per request (own estimate). Replace them with <code>run.py simulate</code> results. Prices come from the BTC price table dated 25/11/2026.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Timeline</h2>
+  <div class="tbl"><table>
+    <tr><th>When</th><th>Whole team</th><th>Pair X · AI core</th><th>Pair Y · product + eval</th></tr>
+    <tr><td class="t">now → 16:00</td><td>Create the public GitHub repo, fill TEAMS.md, send the survey, book the admin interview</td><td>Check that the Outlook compose link opens in a VinUni account; ask IT about Graph</td><td>Draft canvas.md</td></tr>
+    <tr><td class="t">CP1 17:00</td><td>Canvas (7 lines), slice sentence</td><td>—</td><td>—</td></tr>
+    <tr><td class="t">CP2 19:30</td><td>spec §1–§5, freeze the §7 pass rule</td><td><code>agent.py</code> runs end to end on the fake model</td><td>10+ benchmark rows, metric_spec, DATA_CARD</td></tr>
+    <tr><td class="t">Fri night</td><td></td><td>Real model in <code>ai.py</code>, guards</td><td>Web UI: week view, map, leave form</td></tr>
+    <tr><td class="t">CP3 10:00</td><td>Evidence summary with 5+ quotes, 30-second video</td><td><code>eval</code> run-1</td><td>20–30 rows, grade the <code>pass</code> column</td></tr>
+    <tr><td class="t">CP4 14:30</td><td>Slides PDF, rehearse the demo</td><td>One fix → run-2</td><td><code>simulate</code>, cost-estimate.md</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <h2>Writing the code with Sonnet</h2>
+  <div class="cols">
+    <div>
+      <h3>What each coder needs</h3>
+      <ol>
+        <li>Claude Code with a Claude plan or an Anthropic Console key. Start it in the repo root with <code>claude --model sonnet</code>.</li>
+        <li>A separate runtime key for the product's AI call, kept in <code>.env</code>. BTC gives no keys.</li>
+        <li><code>python3.12 -m venv .venv</code>, then <code>.venv/bin/pip install -r requirements.txt</code></li>
+      </ol>
+    </div>
+    <div>
+      <h3>Already in the repo</h3>
+      <ul>
+        <li>A tested data layer: the timetable parser, the email intake, the Phoenix feed reader and a SQLite store with a combined week and clash detection (5 tests pass)</li>
+        <li><code>CLAUDE.md</code> imports AGENTS.md and the plan, so Sonnet starts briefed</li>
+        <li><code>docs/sonnet-playbook.md</code>: six task prompts (T1–T6) in order, with an owner for each file group</li>
+        <li><code>.claude/settings.json</code> allows test and run commands and blocks reading <code>.env</code> and private data</li>
+      </ul>
+    </div>
+  </div>
+  <p class="note">Every teammate must be able to explain the code under their name, or that part scores 0. Use Sonnet for code only. Evidence, interview notes and expected answers must come from real people.</p>
+</section>
+</div>

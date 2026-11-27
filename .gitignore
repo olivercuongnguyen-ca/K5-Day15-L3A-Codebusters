@@ -35,3 +35,12 @@ evidence/**/raw-*
 # Nguyên file data BTC cấp (data/preclass, data/training-ops… của repo đề): để ở đây, không commit
 data-btc
 data-btc/
+
+# --- Codebusters ---
+# Real student data (schedule HTML has 1,083 student IDs + names) — NEVER commit (-10 points rule)
+data/private/
+*.html.orig
+Thoi_khoa_bieu_*.html
+uploads/
+.venv/
+__pycache__/

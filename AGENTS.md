@@ -40,6 +40,6 @@ Khung chỉ dùng thư viện chuẩn của Python. Thêm thư viện thì ghi v
 
 ## Quy ước của nhóm
 
-- Ngôn ngữ trả lời người dùng: __
-- Phong cách code / đặt tên: __
-- Ai duyệt thay đổi do agent tạo trước khi commit: __
+- Ngôn ngữ trả lời người dùng: tiếng Việt, văn phong trang trọng (email xin nghỉ)
+- Phong cách code / đặt tên: Python PEP 8, tên và comment bằng tiếng Anh; web = FastAPI + HTML/JS thuần trong `codebase/web/`
+- Ai duyệt thay đổi do agent tạo trước khi commit: chủ file theo bảng phân công ở `docs/sonnet-playbook.md`

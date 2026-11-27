@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {"name": "codebusters", "runtimeExecutable": ".venv/bin/python", "runtimeArgs": ["-m", "uvicorn", "codebase.web.server:app", "--port", "8000"], "port": 8000}
+  ]
+}

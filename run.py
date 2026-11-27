@@ -82,6 +82,12 @@ def py(*args):
 
 
 def run_app():
+    """Web app (FastAPI) when the venv exists; otherwise the CLI prototype in codebase/app.py."""
+    venv_py = os.path.join(ROOT, ".venv", "bin", "python")
+    if os.path.exists(venv_py):
+        print("Mở http://localhost:8000 — dừng: Ctrl+C. Bản dòng lệnh: python3 codebase/app.py")
+        return subprocess.call([venv_py, "-m", "uvicorn", "codebase.web.server:app", "--port", "8000"],
+                               cwd=ROOT)
     return py(os.path.join("codebase", "app.py"))
 
 

@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 run.py:*)",
+      "Bash(.venv/bin/python:*)",
+      "Bash(.venv/bin/pytest:*)",
+      "Bash(.venv/bin/pip install:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./data/private/**)",
+      "Bash(git add data/private:*)"
+    ]
+  }
+}

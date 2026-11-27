@@ -1,0 +1,3027 @@
+{
+ "source": "Thoi_khoa_bieu_AI20K (weekly email)",
+ "holidays": {
+  "2026-11-23": "Nghỉ lễ",
+  "2026-11-24": "Nghỉ lễ"
+ },
+ "groups": {
+  "L3A": {
+   "level": "Level 3 · L3",
+   "sessions": [
+    {
+     "id": "L3A-00",
+     "index": 0,
+     "date": "2026-11-05",
+     "slot": "Sáng",
+     "kind": "KG",
+     "name": "Khai giảng",
+     "start": "09:00",
+     "end": "12:00",
+     "rooms": []
+    },
+    {
+     "id": "L3A-01",
+     "index": 1,
+     "date": "2026-11-05",
+     "slot": "Chiều",
+     "kind": "LEC",
+     "name": "LEC 1",
+     "start": "14:00",
+     "end": "18:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H203",
+       "building": "H",
+       "backup": true
+      }
+     ]
+    },
+    {
+     "id": "L3A-02",
+     "index": 2,
+     "date": "2026-11-06",
+     "slot": "Sáng",
+     "kind": "LAB",
+     "name": "LAB 1",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "H201",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H202",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "E305",
+       "building": "E",
+       "backup": false
+      },
+      {
+       "code": "H104",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "C304",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C104",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3A-03",
+     "index": 3,
+     "date": "2026-11-06",
+     "slot": "Chiều",
+     "kind": "LEC",
+     "name": "LEC 2",
+     "start": "14:00",
+     "end": "18:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H203",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H207",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3A-04",
+     "index": 4,
+     "date": "2026-11-09",
+     "slot": "Sáng",
+     "kind": "LAB",
+     "name": "LAB 2",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "H201",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H202",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "E305",
+       "building": "E",
+       "backup": false
+      },
+      {
+       "code": "H208",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "C201",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C204",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "H204",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3A-05",
+     "index": 5,
+     "date": "2026-11-09",
+     "slot": "Chiều",
+     "kind": "LEC",
+     "name": "LEC 3",
+     "start": "14:00",
+     "end": "18:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H203",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H204",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3A-06",
+     "index": 6,
+     "date": "2026-11-10",
+     "slot": "Sáng",
+     "kind": "LAB",
+     "name": "LAB 3",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "C401",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "H201",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "E305",
+       "building": "E",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3A-07",
+     "index": 7,
+     "date": "2026-11-10",
+     "slot": "Chiều",
+     "kind": "LEC",
+     "name": "LEC 4",
+     "start": "14:00",
+     "end": "18:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H203",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H201",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3A-08",
+     "index": 8,
+     "date": "2026-11-11",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 4",
+     "start": "16:30",
+     "end": "20:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H203",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H207",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3A-09",
+     "index": 9,
+     "date": "2026-11-12",
+     "slot": "Sáng",
+     "kind": "ONL",
+     "name": "LEC 5",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": []
+    },
+    {
+     "id": "L3A-10",
+     "index": 10,
+     "date": "2026-11-12",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 5",
+     "start": "14:00",
+     "end": "18:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H201",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3A-11",
+     "index": 11,
+     "date": "2026-11-13",
+     "slot": "Sáng",
+     "kind": "LEC",
+     "name": "LEC 6",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H203",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H207",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3A-12",
+     "index": 12,
+     "date": "2026-11-13",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 6",
+     "start": "16:30",
+     "end": "20:00",
+     "rooms": [
+      {
+       "code": "H201",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H202",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "E305",
+       "building": "E",
+       "backup": false
+      },
+      {
+       "code": "H104",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "C301",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3A-13",
+     "index": 13,
+     "date": "2026-11-14",
+     "slot": "Sáng",
+     "kind": "LEC",
+     "name": "LEC 7",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H203",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H207",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3A-14",
+     "index": 14,
+     "date": "2026-11-14",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 7",
+     "start": "14:00",
+     "end": "18:00",
+     "rooms": [
+      {
+       "code": "H201",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H202",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "E305",
+       "building": "E",
+       "backup": false
+      },
+      {
+       "code": "E403",
+       "building": "E",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3A-15",
+     "index": 15,
+     "date": "2026-11-16",
+     "slot": "Sáng",
+     "kind": "LEC",
+     "name": "LEC 8",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H203",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H207",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3A-16",
+     "index": 16,
+     "date": "2026-11-16",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 8",
+     "start": "17:00",
+     "end": "20:00",
+     "rooms": [
+      {
+       "code": "H205",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "C301",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "H201",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H202",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H104",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3A-17",
+     "index": 17,
+     "date": "2026-11-17",
+     "slot": "Sáng",
+     "kind": "LEC",
+     "name": "LEC 9",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H203",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H207",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3A-18",
+     "index": 18,
+     "date": "2026-11-17",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 9",
+     "start": "16:00",
+     "end": "19:30",
+     "rooms": [
+      {
+       "code": "C401",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "H201",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H202",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3A-19",
+     "index": 19,
+     "date": "2026-11-18",
+     "slot": "Sáng",
+     "kind": "LEC",
+     "name": "LEC 10",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H203",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3A-20",
+     "index": 20,
+     "date": "2026-11-18",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 10",
+     "start": "14:00",
+     "end": "18:00",
+     "rooms": [
+      {
+       "code": "H201",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H202",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "E402",
+       "building": "E",
+       "backup": false
+      },
+      {
+       "code": "E305",
+       "building": "E",
+       "backup": false
+      },
+      {
+       "code": "E303",
+       "building": "E",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3A-21",
+     "index": 21,
+     "date": "2026-11-19",
+     "slot": "Sáng",
+     "kind": "ONL",
+     "name": "LEC 11",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": []
+    },
+    {
+     "id": "L3A-22",
+     "index": 22,
+     "date": "2026-11-19",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 11",
+     "start": "14:00",
+     "end": "18:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H204",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H208",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3A-23",
+     "index": 23,
+     "date": "2026-11-20",
+     "slot": "Sáng",
+     "kind": "ONL",
+     "name": "LEC 12",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": []
+    },
+    {
+     "id": "L3A-24",
+     "index": 24,
+     "date": "2026-11-20",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 12",
+     "start": "14:00",
+     "end": "18:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H207",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H208",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3A-25",
+     "index": 25,
+     "date": "2026-11-21",
+     "slot": "Sáng",
+     "kind": "LEC",
+     "name": "LEC 13",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "D301",
+       "building": "D",
+       "backup": false
+      },
+      {
+       "code": "D302",
+       "building": "D",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3A-26",
+     "index": 26,
+     "date": "2026-11-21",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 13",
+     "start": "14:00",
+     "end": "18:00",
+     "rooms": [
+      {
+       "code": "H201",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H202",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "E402",
+       "building": "E",
+       "backup": false
+      },
+      {
+       "code": "E305",
+       "building": "E",
+       "backup": false
+      },
+      {
+       "code": "E303",
+       "building": "E",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3A-27",
+     "index": 27,
+     "date": "2026-11-25",
+     "slot": "Sáng",
+     "kind": "ONL",
+     "name": "LEC 14",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": []
+    },
+    {
+     "id": "L3A-28",
+     "index": 28,
+     "date": "2026-11-25",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 14",
+     "start": "14:00",
+     "end": "18:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H207",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H208",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3A-29",
+     "index": 29,
+     "date": "2026-11-27",
+     "slot": "Chiều",
+     "kind": "LEC",
+     "name": "LEC 15",
+     "start": "16:00",
+     "end": "19:30",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3A-30",
+     "index": 30,
+     "date": "2026-11-28",
+     "slot": "Chiều",
+     "kind": "HACK",
+     "name": "Hackathon",
+     "start": "14:00",
+     "end": "18:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H201",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    }
+   ]
+  },
+  "L3B": {
+   "level": "Level 3 · L3",
+   "sessions": [
+    {
+     "id": "L3B-00",
+     "index": 0,
+     "date": "2026-11-05",
+     "slot": "Sáng",
+     "kind": "KG",
+     "name": "Khai giảng",
+     "start": "09:00",
+     "end": "12:00",
+     "rooms": []
+    },
+    {
+     "id": "L3B-01",
+     "index": 1,
+     "date": "2026-11-06",
+     "slot": "Sáng",
+     "kind": "LEC",
+     "name": "LEC 1",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H203",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H207",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3B-02",
+     "index": 2,
+     "date": "2026-11-06",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 1",
+     "start": "14:00",
+     "end": "18:00",
+     "rooms": [
+      {
+       "code": "H201",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H202",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "E305",
+       "building": "E",
+       "backup": false
+      },
+      {
+       "code": "E403",
+       "building": "E",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3B-03",
+     "index": 3,
+     "date": "2026-11-09",
+     "slot": "Sáng",
+     "kind": "LEC",
+     "name": "LEC 2",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H203",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H207",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3B-04",
+     "index": 4,
+     "date": "2026-11-09",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 2",
+     "start": "14:00",
+     "end": "18:00",
+     "rooms": [
+      {
+       "code": "H201",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H202",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "E305",
+       "building": "E",
+       "backup": false
+      },
+      {
+       "code": "H208",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "C402",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "H104",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3B-05",
+     "index": 5,
+     "date": "2026-11-10",
+     "slot": "Sáng",
+     "kind": "LEC",
+     "name": "LEC 3",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H203",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H207",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3B-06",
+     "index": 6,
+     "date": "2026-11-10",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 3",
+     "start": "16:30",
+     "end": "20:00",
+     "rooms": [
+      {
+       "code": "E305",
+       "building": "E",
+       "backup": false
+      },
+      {
+       "code": "G104",
+       "building": "G",
+       "backup": false
+      },
+      {
+       "code": "F307",
+       "building": "F",
+       "backup": false
+      },
+      {
+       "code": "H104",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "C203",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3B-07",
+     "index": 7,
+     "date": "2026-11-11",
+     "slot": "Sáng",
+     "kind": "LEC",
+     "name": "LEC 4",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H203",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3B-08",
+     "index": 8,
+     "date": "2026-11-11",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 4",
+     "start": "16:30",
+     "end": "20:00",
+     "rooms": [
+      {
+       "code": "C401",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "H201",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H202",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3B-09",
+     "index": 9,
+     "date": "2026-11-12",
+     "slot": "Sáng",
+     "kind": "ONL",
+     "name": "LEC 5",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": []
+    },
+    {
+     "id": "L3B-10",
+     "index": 10,
+     "date": "2026-11-13",
+     "slot": "Sáng",
+     "kind": "LAB",
+     "name": "LAB 5",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "H201",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H202",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "E305",
+       "building": "E",
+       "backup": false
+      },
+      {
+       "code": "H104",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "C304",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C305",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3B-11",
+     "index": 11,
+     "date": "2026-11-13",
+     "slot": "Chiều",
+     "kind": "LEC",
+     "name": "LEC 6",
+     "start": "14:00",
+     "end": "18:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H203",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H207",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3B-12",
+     "index": 12,
+     "date": "2026-11-14",
+     "slot": "Sáng",
+     "kind": "LAB",
+     "name": "LAB 6",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "H201",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H202",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "E305",
+       "building": "E",
+       "backup": false
+      },
+      {
+       "code": "E403",
+       "building": "E",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3B-13",
+     "index": 13,
+     "date": "2026-11-14",
+     "slot": "Chiều",
+     "kind": "LEC",
+     "name": "LEC 7",
+     "start": "14:00",
+     "end": "18:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H203",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H204",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3B-14",
+     "index": 14,
+     "date": "2026-11-16",
+     "slot": "Sáng",
+     "kind": "LAB",
+     "name": "LAB 7",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "H201",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H202",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "E305",
+       "building": "E",
+       "backup": false
+      },
+      {
+       "code": "E403",
+       "building": "E",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3B-15",
+     "index": 15,
+     "date": "2026-11-16",
+     "slot": "Chiều",
+     "kind": "LEC",
+     "name": "LEC 8",
+     "start": "16:30",
+     "end": "20:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H203",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H204",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3B-16",
+     "index": 16,
+     "date": "2026-11-17",
+     "slot": "Sáng",
+     "kind": "LAB",
+     "name": "LAB 8",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "C401",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "H201",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "E305",
+       "building": "E",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3B-17",
+     "index": 17,
+     "date": "2026-11-17",
+     "slot": "Chiều",
+     "kind": "LEC",
+     "name": "LEC 9",
+     "start": "16:00",
+     "end": "19:30",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H203",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3B-18",
+     "index": 18,
+     "date": "2026-11-18",
+     "slot": "Sáng",
+     "kind": "LAB",
+     "name": "LAB 9",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "E402",
+       "building": "E",
+       "backup": false
+      },
+      {
+       "code": "E305",
+       "building": "E",
+       "backup": false
+      },
+      {
+       "code": "E303",
+       "building": "E",
+       "backup": false
+      },
+      {
+       "code": "C102",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "H201",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3B-19",
+     "index": 19,
+     "date": "2026-11-18",
+     "slot": "Chiều",
+     "kind": "LEC",
+     "name": "LEC 10",
+     "start": "14:00",
+     "end": "18:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H207",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H208",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3B-20",
+     "index": 20,
+     "date": "2026-11-19",
+     "slot": "Sáng",
+     "kind": "ONL",
+     "name": "LEC 11",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": []
+    },
+    {
+     "id": "L3B-21",
+     "index": 21,
+     "date": "2026-11-19",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 10",
+     "start": "14:00",
+     "end": "18:00",
+     "rooms": [
+      {
+       "code": "E403",
+       "building": "E",
+       "backup": false
+      },
+      {
+       "code": "E402",
+       "building": "E",
+       "backup": false
+      },
+      {
+       "code": "E305",
+       "building": "E",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3B-22",
+     "index": 22,
+     "date": "2026-11-20",
+     "slot": "Sáng",
+     "kind": "ONL",
+     "name": "LEC 12",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": []
+    },
+    {
+     "id": "L3B-23",
+     "index": 23,
+     "date": "2026-11-20",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 11",
+     "start": "14:00",
+     "end": "18:00",
+     "rooms": [
+      {
+       "code": "E403",
+       "building": "E",
+       "backup": false
+      },
+      {
+       "code": "E305",
+       "building": "E",
+       "backup": false
+      },
+      {
+       "code": "H201",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H202",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3B-24",
+     "index": 24,
+     "date": "2026-11-21",
+     "slot": "Sáng",
+     "kind": "LAB",
+     "name": "LAB 12",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "H201",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H202",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "C402",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C301",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C302",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C303",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3B-25",
+     "index": 25,
+     "date": "2026-11-21",
+     "slot": "Chiều",
+     "kind": "LEC",
+     "name": "LEC 13",
+     "start": "14:00",
+     "end": "18:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H203",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H204",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3B-26",
+     "index": 26,
+     "date": "2026-11-25",
+     "slot": "Sáng",
+     "kind": "ONL",
+     "name": "LEC 14",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": []
+    },
+    {
+     "id": "L3B-27",
+     "index": 27,
+     "date": "2026-11-25",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 13",
+     "start": "14:00",
+     "end": "18:00",
+     "rooms": [
+      {
+       "code": "H201",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H202",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "E402",
+       "building": "E",
+       "backup": false
+      },
+      {
+       "code": "E305",
+       "building": "E",
+       "backup": false
+      },
+      {
+       "code": "E303",
+       "building": "E",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3B-28",
+     "index": 28,
+     "date": "2026-11-26",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 14",
+     "start": "14:00",
+     "end": "18:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H204",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H208",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3B-29",
+     "index": 29,
+     "date": "2026-11-27",
+     "slot": "Chiều",
+     "kind": "LEC",
+     "name": "LEC 15",
+     "start": "16:00",
+     "end": "19:30",
+     "rooms": [
+      {
+       "code": "C401",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "H201",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H202",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L3B-30",
+     "index": 30,
+     "date": "2026-11-28",
+     "slot": "Chiều",
+     "kind": "HACK",
+     "name": "Hackathon",
+     "start": "14:00",
+     "end": "18:00",
+     "rooms": [
+      {
+       "code": "C401",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "D303",
+       "building": "D",
+       "backup": false
+      },
+      {
+       "code": "D304",
+       "building": "D",
+       "backup": false
+      },
+      {
+       "code": "D305",
+       "building": "D",
+       "backup": false
+      }
+     ]
+    }
+   ]
+  },
+  "L2A": {
+   "level": "Level 2 · L2",
+   "sessions": [
+    {
+     "id": "L2A-00",
+     "index": 0,
+     "date": "2026-11-05",
+     "slot": "Sáng",
+     "kind": "KG",
+     "name": "Khai giảng",
+     "start": "09:00",
+     "end": "12:00",
+     "rooms": []
+    },
+    {
+     "id": "L2A-01",
+     "index": 1,
+     "date": "2026-11-05",
+     "slot": "Chiều",
+     "kind": "LEC",
+     "name": "LEC 1",
+     "start": "16:30",
+     "end": "20:00",
+     "rooms": [
+      {
+       "code": "C401",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2A-02",
+     "index": 2,
+     "date": "2026-11-06",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 1",
+     "start": "16:30",
+     "end": "20:00",
+     "rooms": [
+      {
+       "code": "C401",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2A-03",
+     "index": 3,
+     "date": "2026-11-09",
+     "slot": "Sáng",
+     "kind": "LEC",
+     "name": "LEC 2",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "C401",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2A-04",
+     "index": 4,
+     "date": "2026-11-09",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 2",
+     "start": "16:30",
+     "end": "20:00",
+     "rooms": [
+      {
+       "code": "E402",
+       "building": "E",
+       "backup": false
+      },
+      {
+       "code": "C204",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C304",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "E303",
+       "building": "E",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2A-05",
+     "index": 5,
+     "date": "2026-11-10",
+     "slot": "Chiều",
+     "kind": "LEC",
+     "name": "LEC 3",
+     "start": "16:30",
+     "end": "20:00",
+     "rooms": [
+      {
+       "code": "C401",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2A-06",
+     "index": 6,
+     "date": "2026-11-11",
+     "slot": "Sáng",
+     "kind": "ONL",
+     "name": "LEC 4",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": []
+    },
+    {
+     "id": "L2A-07",
+     "index": 7,
+     "date": "2026-11-11",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 3",
+     "start": "16:00",
+     "end": "19:30",
+     "rooms": [
+      {
+       "code": "E402",
+       "building": "E",
+       "backup": false
+      },
+      {
+       "code": "C303",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "D303",
+       "building": "D",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2A-08",
+     "index": 8,
+     "date": "2026-11-12",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 4",
+     "start": "16:00",
+     "end": "19:30",
+     "rooms": [
+      {
+       "code": "C401",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2A-09",
+     "index": 9,
+     "date": "2026-11-13",
+     "slot": "Sáng",
+     "kind": "ONL",
+     "name": "LEC 5",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": []
+    },
+    {
+     "id": "L2A-10",
+     "index": 10,
+     "date": "2026-11-13",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 5",
+     "start": "16:00",
+     "end": "19:30",
+     "rooms": [
+      {
+       "code": "C401",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2A-11",
+     "index": 11,
+     "date": "2026-11-14",
+     "slot": "Sáng",
+     "kind": "LEC",
+     "name": "LEC 6",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "C401",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2A-12",
+     "index": 12,
+     "date": "2026-11-14",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 6",
+     "start": "14:00",
+     "end": "18:00",
+     "rooms": [
+      {
+       "code": "C401",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2A-13",
+     "index": 13,
+     "date": "2026-11-16",
+     "slot": "Sáng",
+     "kind": "LEC",
+     "name": "LEC 7",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "C401",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2A-14",
+     "index": 14,
+     "date": "2026-11-16",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 7",
+     "start": "16:30",
+     "end": "20:00",
+     "rooms": [
+      {
+       "code": "C204",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C303",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C304",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C402",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2A-15",
+     "index": 15,
+     "date": "2026-11-17",
+     "slot": "Sáng",
+     "kind": "ONL",
+     "name": "LEC 8",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": []
+    },
+    {
+     "id": "L2A-16",
+     "index": 16,
+     "date": "2026-11-17",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 8",
+     "start": "16:30",
+     "end": "20:00",
+     "rooms": [
+      {
+       "code": "C402",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C303",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C301",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C302",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2A-17",
+     "index": 17,
+     "date": "2026-11-18",
+     "slot": "Sáng",
+     "kind": "ONL",
+     "name": "LEC 9",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": []
+    },
+    {
+     "id": "L2A-18",
+     "index": 18,
+     "date": "2026-11-18",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 9",
+     "start": "16:30",
+     "end": "20:00",
+     "rooms": [
+      {
+       "code": "C401",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2A-19",
+     "index": 19,
+     "date": "2026-11-19",
+     "slot": "Sáng",
+     "kind": "LEC",
+     "name": "LEC 10",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H201",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2A-20",
+     "index": 20,
+     "date": "2026-11-19",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 10",
+     "start": "16:00",
+     "end": "19:30",
+     "rooms": [
+      {
+       "code": "C401",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2A-21",
+     "index": 21,
+     "date": "2026-11-20",
+     "slot": "Sáng",
+     "kind": "LEC",
+     "name": "LEC 11",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H201",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2A-22",
+     "index": 22,
+     "date": "2026-11-20",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 11",
+     "start": "16:00",
+     "end": "19:30",
+     "rooms": [
+      {
+       "code": "C401",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2A-23",
+     "index": 23,
+     "date": "2026-11-21",
+     "slot": "Sáng",
+     "kind": "LEC",
+     "name": "LEC 12",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "C401",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2A-24",
+     "index": 24,
+     "date": "2026-11-21",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 12",
+     "start": "14:00",
+     "end": "18:00",
+     "rooms": [
+      {
+       "code": "C401",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2A-25",
+     "index": 25,
+     "date": "2026-11-25",
+     "slot": "Sáng",
+     "kind": "LEC",
+     "name": "LEC 13",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H201",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2A-26",
+     "index": 26,
+     "date": "2026-11-25",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 13",
+     "start": "16:30",
+     "end": "20:00",
+     "rooms": [
+      {
+       "code": "C401",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2A-27",
+     "index": 27,
+     "date": "2026-11-26",
+     "slot": "Sáng",
+     "kind": "LEC",
+     "name": "LEC 14",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H201",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2A-28",
+     "index": 28,
+     "date": "2026-11-26",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 14",
+     "start": "16:00",
+     "end": "19:30",
+     "rooms": [
+      {
+       "code": "C401",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2A-29",
+     "index": 29,
+     "date": "2026-11-27",
+     "slot": "Sáng",
+     "kind": "LEC",
+     "name": "LEC 15",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H201",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2A-30",
+     "index": 30,
+     "date": "2026-11-28",
+     "slot": "Sáng",
+     "kind": "HACK",
+     "name": "Hackathon",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "C401",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    }
+   ]
+  },
+  "L2B": {
+   "level": "Level 2 · L2",
+   "sessions": [
+    {
+     "id": "L2B-00",
+     "index": 0,
+     "date": "2026-11-05",
+     "slot": "Sáng",
+     "kind": "KG",
+     "name": "Khai giảng",
+     "start": "09:00",
+     "end": "12:00",
+     "rooms": []
+    },
+    {
+     "id": "L2B-01",
+     "index": 1,
+     "date": "2026-11-05",
+     "slot": "Chiều",
+     "kind": "LEC",
+     "name": "LEC 1",
+     "start": "16:30",
+     "end": "20:00",
+     "rooms": [
+      {
+       "code": "C102",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C402",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2B-02",
+     "index": 2,
+     "date": "2026-11-06",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 1",
+     "start": "16:30",
+     "end": "20:00",
+     "rooms": [
+      {
+       "code": "C301",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C303",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C302",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2B-03",
+     "index": 3,
+     "date": "2026-11-09",
+     "slot": "Sáng",
+     "kind": "LEC",
+     "name": "LEC 2",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "E402",
+       "building": "E",
+       "backup": false
+      },
+      {
+       "code": "C102",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2B-04",
+     "index": 4,
+     "date": "2026-11-09",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 2",
+     "start": "16:30",
+     "end": "20:00",
+     "rooms": [
+      {
+       "code": "E403",
+       "building": "E",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2B-05",
+     "index": 5,
+     "date": "2026-11-10",
+     "slot": "Chiều",
+     "kind": "LEC",
+     "name": "LEC 3",
+     "start": "16:30",
+     "end": "20:00",
+     "rooms": [
+      {
+       "code": "C301",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C303",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C302",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2B-06",
+     "index": 6,
+     "date": "2026-11-11",
+     "slot": "Sáng",
+     "kind": "ONL",
+     "name": "LEC 4",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": []
+    },
+    {
+     "id": "L2B-07",
+     "index": 7,
+     "date": "2026-11-11",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 3",
+     "start": "16:00",
+     "end": "19:30",
+     "rooms": [
+      {
+       "code": "G104",
+       "building": "G",
+       "backup": false
+      },
+      {
+       "code": "C205",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2B-08",
+     "index": 8,
+     "date": "2026-11-12",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 4",
+     "start": "16:00",
+     "end": "19:30",
+     "rooms": [
+      {
+       "code": "E403",
+       "building": "E",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2B-09",
+     "index": 9,
+     "date": "2026-11-13",
+     "slot": "Sáng",
+     "kind": "ONL",
+     "name": "LEC 5",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": []
+    },
+    {
+     "id": "L2B-10",
+     "index": 10,
+     "date": "2026-11-13",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 5",
+     "start": "16:00",
+     "end": "19:30",
+     "rooms": [
+      {
+       "code": "C202",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "H208",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "E303",
+       "building": "E",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2B-11",
+     "index": 11,
+     "date": "2026-11-14",
+     "slot": "Sáng",
+     "kind": "LEC",
+     "name": "LEC 6",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "C102",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C201",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2B-12",
+     "index": 12,
+     "date": "2026-11-14",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 6",
+     "start": "14:00",
+     "end": "18:00",
+     "rooms": [
+      {
+       "code": "C301",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C303",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C302",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2B-13",
+     "index": 13,
+     "date": "2026-11-16",
+     "slot": "Sáng",
+     "kind": "LEC",
+     "name": "LEC 7",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "C202",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C204",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2B-14",
+     "index": 14,
+     "date": "2026-11-16",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 7",
+     "start": "16:30",
+     "end": "20:00",
+     "rooms": [
+      {
+       "code": "C302",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C203",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C201",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2B-15",
+     "index": 15,
+     "date": "2026-11-17",
+     "slot": "Sáng",
+     "kind": "ONL",
+     "name": "LEC 8",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": []
+    },
+    {
+     "id": "L2B-16",
+     "index": 16,
+     "date": "2026-11-17",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 8",
+     "start": "16:30",
+     "end": "20:00",
+     "rooms": [
+      {
+       "code": "C203",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C201",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C204",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2B-17",
+     "index": 17,
+     "date": "2026-11-18",
+     "slot": "Sáng",
+     "kind": "ONL",
+     "name": "LEC 9",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": []
+    },
+    {
+     "id": "L2B-18",
+     "index": 18,
+     "date": "2026-11-18",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 9",
+     "start": "16:30",
+     "end": "20:00",
+     "rooms": [
+      {
+       "code": "C302",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C203",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C201",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2B-19",
+     "index": 19,
+     "date": "2026-11-19",
+     "slot": "Sáng",
+     "kind": "LEC",
+     "name": "LEC 10",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2B-20",
+     "index": 20,
+     "date": "2026-11-19",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 10",
+     "start": "16:00",
+     "end": "19:30",
+     "rooms": [
+      {
+       "code": "H201",
+       "building": "H",
+       "backup": false
+      },
+      {
+       "code": "H202",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2B-21",
+     "index": 21,
+     "date": "2026-11-20",
+     "slot": "Sáng",
+     "kind": "LEC",
+     "name": "LEC 11",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2B-22",
+     "index": 22,
+     "date": "2026-11-20",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 11",
+     "start": "16:00",
+     "end": "19:30",
+     "rooms": [
+      {
+       "code": "C102",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C202",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2B-23",
+     "index": 23,
+     "date": "2026-11-21",
+     "slot": "Sáng",
+     "kind": "LEC",
+     "name": "LEC 12",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2B-24",
+     "index": 24,
+     "date": "2026-11-21",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 12",
+     "start": "14:00",
+     "end": "18:00",
+     "rooms": [
+      {
+       "code": "C201",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C204",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C302",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2B-25",
+     "index": 25,
+     "date": "2026-11-25",
+     "slot": "Sáng",
+     "kind": "LEC",
+     "name": "LEC 13",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2B-26",
+     "index": 26,
+     "date": "2026-11-25",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 13",
+     "start": "16:30",
+     "end": "20:00",
+     "rooms": [
+      {
+       "code": "C302",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C203",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C201",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2B-27",
+     "index": 27,
+     "date": "2026-11-26",
+     "slot": "Sáng",
+     "kind": "LEC",
+     "name": "LEC 14",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2B-28",
+     "index": 28,
+     "date": "2026-11-26",
+     "slot": "Chiều",
+     "kind": "LAB",
+     "name": "LAB 14",
+     "start": "16:00",
+     "end": "19:30",
+     "rooms": [
+      {
+       "code": "C402",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C301",
+       "building": "C",
+       "backup": false
+      },
+      {
+       "code": "C101",
+       "building": "C",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2B-29",
+     "index": 29,
+     "date": "2026-11-27",
+     "slot": "Sáng",
+     "kind": "LEC",
+     "name": "LEC 15",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "H210",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    },
+    {
+     "id": "L2B-30",
+     "index": 30,
+     "date": "2026-11-28",
+     "slot": "Sáng",
+     "kind": "HACK",
+     "name": "Hackathon",
+     "start": "09:00",
+     "end": "13:00",
+     "rooms": [
+      {
+       "code": "H209",
+       "building": "H",
+       "backup": false
+      }
+     ]
+    }
+   ]
+  }
+ }
+}

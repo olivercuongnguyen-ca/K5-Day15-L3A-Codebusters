@@ -1,0 +1,71 @@
+{
+  "_comment": "Buildings drawn in codebase/web/static/campus-map.svg (redrawn from the VinUni 2D campus map, 1701x2000 frame, no routes or arrows). The UI highlights the SVG group #b-<KEY>. Building D appears in room codes (D301-D305) but is NOT on the map: the UI says so and links the 3D virtual tour.",
+  "image": "codebase/web/static/campus-map.svg",
+  "virtual_tour": "https://vinuni.edu.vn/virtual-tour/index.html",
+  "buildings": {
+    "A": {
+      "label": "Building A",
+      "note": "LAB wing"
+    },
+    "B": {
+      "label": "Building B",
+      "note": "Auditorium"
+    },
+    "C": {
+      "label": "Building C",
+      "note": ""
+    },
+    "E": {
+      "label": "Building E",
+      "note": "Canteen"
+    },
+    "F": {
+      "label": "Building F",
+      "note": "Medical Simulation Center"
+    },
+    "G": {
+      "label": "Building G",
+      "note": ""
+    },
+    "H": {
+      "label": "Building H",
+      "note": ""
+    },
+    "I": {
+      "label": "Building I",
+      "note": ""
+    },
+    "J": {
+      "label": "Building J",
+      "note": "Dorm"
+    },
+    "K": {
+      "label": "Building K",
+      "note": ""
+    },
+    "L": {
+      "label": "Building L",
+      "note": ""
+    },
+    "PARKING": {
+      "label": "Parking Lot",
+      "note": ""
+    }
+  },
+  "gates": {
+    "MAIN": {
+      "label": "Main Gate (Hanoi-Haiphong Expressway side)",
+      "point": [
+        41.0,
+        85.5
+      ]
+    },
+    "SAN_HO": {
+      "label": "San Ho Gate (San Ho Road)",
+      "point": [
+        40.2,
+        12.5
+      ]
+    }
+  }
+}
