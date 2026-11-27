@@ -161,6 +161,7 @@ export function AppShell({ children, hideRightAside = false }: AppShellProps) {
           {nextEvent ? (
             <EventCard
               variant="featured"
+              featuredLabel={schedule.isOngoing(nextEvent) ? "Đang diễn ra" : "Buổi học tiếp theo"}
               category={nextEvent.category}
               title={nextEvent.title}
               timeRange={nextEvent.timeRange}

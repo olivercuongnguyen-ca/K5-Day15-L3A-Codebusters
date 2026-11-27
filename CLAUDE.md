@@ -23,13 +23,16 @@ The **graded AI slice** is the leave-request workflow in `codebase/agent.py` (se
   CLI: `python3 scripts/ingest.py inbox|tkb|phoenix|week`. Tests: `.venv/bin/pytest -q tests`.
 - Roles (branch backend-roles): `codebase/auth.py` (accounts, PBKDF2 passwords, cookie sessions, lockout),
   `codebase/admin.py` (admin timetable edits), `codebase/duties.py` (mentor duty changes layered over Phoenix).
-  Only admins and mentors sign in; students have no account: they enter their student ID (+ optional team, editable
-  in settings; a typed team beats the Phoenix guess), kept in a plain cookie. First admin:
+  Only admins and mentors sign in; students have no account: they enter their student ID (+ optional team code, editable
+  in settings), kept in a plain cookie. First admin:
   `python3 scripts/users.py create-admin --username <name>`. Route list: top of `codebase/web/server.py`, or `/docs`.
-- Team meetings (`codebase/meetings.py`): a student signs in with a password (only for this; tables
+- Nhóm vs team: a **nhóm** (`students.team`, "Nhóm 18") is a mentor's group of many teams and only shares mentor
+  duty; it is read from the student's Phoenix mentor-duty titles, never typed. A **team** (`students.squad`, a code
+  like "T050" typed by the student, matched ignoring case/spaces) is 4 people who meet.
+- Team meetings (`codebase/meetings.py`) are per team: a student signs in with a password (only for this; tables
   `student_accounts`, `student_sessions`) to schedule; teammates see link + passcode with their ID only and get a push.
-  Suggestions = slots with no REQUIRED item for any teammate (class sessions, team mentor duty, other meetings);
-  workshops / office hours only flag an overlap.
+  Suggestions = slots with no REQUIRED item for any teammate (class sessions, mentor duty of each teammate's nhóm,
+  the team's other meetings); workshops / office hours only flag an overlap.
 - Phoenix feed URLs are secrets. Never print, log, commit, or send them to the model.
 
 ## Hard rules (in addition to AGENTS.md)

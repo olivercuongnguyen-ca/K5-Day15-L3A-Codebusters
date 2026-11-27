@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState, type Ref } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 import {
@@ -19,6 +19,17 @@ import {
   VideoIcon,
 } from "@/components/ui";
 import { useApp, useHydrated } from "@/components/app/app-provider";
+
+/** Thin "now" marker between what already happened and what is next. */
+function NowLine({ lineRef }: { lineRef: Ref<HTMLDivElement> }) {
+  return (
+    <div ref={lineRef} role="separator" aria-label="Bây giờ" className="flex items-center gap-2 py-0.5">
+      <span className="w-2 h-2 rounded-full bg-danger shrink-0" aria-hidden="true" />
+      <span className="text-[11px] leading-[14px] font-semibold uppercase tracking-[0.06em] text-danger">Bây giờ</span>
+      <span className="flex-1 h-[2px] rounded-full bg-danger/70" aria-hidden="true" />
+    </div>
+  );
+}
 
 export function TodayView() {
   const { currentUser, student, schedule, openEventDetail, openLeaveRequest, openMeetingSheet, showToast, preferences } =
@@ -39,12 +50,34 @@ export function TodayView() {
   );
   const phoenixMissing = Boolean(schedule.latestWeek && !schedule.latestWeek.phoenix_linked);
 
-  const visibleEvents = schedule.getEventsForDate(selectedDateKey, {
+  const dayEvents = schedule.getEventsForDate(selectedDateKey, {
     includeDeadlines: preferences.showDeadlinesInTimeline,
   });
+  // today: everything already over goes above the "now" line (time order kept within each group), so an item that
+  // ended stays above it even when it started together with one still running
+  const visibleEvents = selectedDateKey === TODAY_DATE_KEY
+    ? [...dayEvents.filter((e) => schedule.isPast(e)), ...dayEvents.filter((e) => !schedule.isPast(e))]
+    : dayEvents;
   const weekDays = schedule.weekDays(selectedDateKey);
 
   const isTodaySelected = selectedDateKey === TODAY_DATE_KEY;
+  const featuredLabel = nextEvent && schedule.isOngoing(nextEvent) ? "Đang diễn ra" : "Buổi học tiếp theo";
+
+  // "now" line: before the first item that has not ended yet (after all of them if the day is over)
+  const firstUpcoming = visibleEvents.findIndex((e) => !schedule.isPast(e));
+  const nowIndex = firstUpcoming === -1 ? visibleEvents.length : firstUpcoming;
+  const hasPast = isTodaySelected && nowIndex > 0;
+  const timelineRef = useRef<HTMLDivElement>(null);
+  const nowLineRef = useRef<HTMLDivElement>(null);
+  const scrolledFor = useRef("");
+  useEffect(() => {  // open the list at "now" once per day shown, not on every minute tick
+    const box = timelineRef.current;
+    const line = nowLineRef.current;
+    const key = `${selectedDateKey}|${visibleEvents.length}`;
+    if (!hasPast || !box || !line || scrolledFor.current === key) return;
+    scrolledFor.current = key;
+    box.scrollTo({ top: line.offsetTop - box.offsetTop - 4, behavior: "auto" });
+  }, [hasPast, selectedDateKey, visibleEvents.length]);
   const hydrated = useHydrated();
 
   if (!hydrated) return <div aria-busy="true" className="min-h-[60dvh]" />;
@@ -75,7 +108,7 @@ export function TodayView() {
               leftIcon={<VideoIcon size={15} />}
               onClick={openMeetingSheet}
             >
-              Họp nhóm
+              Họp team
             </Button>
           ) : null}
           <Button
@@ -154,9 +187,10 @@ export function TodayView() {
 
       {/* Mobile & Tablet Featured Card (hidden on lg+ because right aside shows it) */}
       {previewMode !== "loading" && nextEvent ? (
-        <section aria-label="Buổi học tiếp theo" className="lg:hidden">
+        <section aria-label={featuredLabel} className="lg:hidden">
           <EventCard
             variant="featured"
+            featuredLabel={featuredLabel}
             category={nextEvent.category}
             title={nextEvent.title}
             timeRange={nextEvent.timeRange}
@@ -238,23 +272,38 @@ export function TodayView() {
             </Link>
           </div>
         ) : (
-          <div className="flex flex-col gap-2.5 md:gap-3">
-            {visibleEvents.map((event, index) => (
-              <EventCard
-                key={event.id}
-                variant="timeline"
-                showTimelineRail
-                isLastInTimeline={index === visibleEvents.length - 1}
-                category={event.category}
-                title={event.title}
-                startTime={event.startTime}
-                timeRange={event.timeRange}
-                formatLabel={event.formatLabel}
-                sources={event.sources}
-                changeNote={event.changeNote}
-                onSelect={() => openEventDetail(event)}
-              />
-            ))}
+          <div
+            ref={timelineRef}
+            className={cn(
+              "flex flex-col gap-2.5 md:gap-3",
+              // today with past items: the list opens at "now"; scroll up to see what already happened
+              hasPast && "max-h-[68dvh] lg:max-h-[72dvh] overflow-y-auto overscroll-contain scroll-smooth pr-1 -mr-1",
+            )}
+          >
+            {visibleEvents.map((event, index) => {
+              const past = isTodaySelected && schedule.isPast(event);
+              return (
+                <Fragment key={event.id}>
+                  {isTodaySelected && index === nowIndex ? <NowLine lineRef={nowLineRef} /> : null}
+                  <div className={cn(past && "opacity-50 grayscale-[60%] transition-opacity")} aria-label={past ? "Đã qua" : undefined}>
+                    <EventCard
+                      variant="timeline"
+                      showTimelineRail
+                      isLastInTimeline={index === visibleEvents.length - 1}
+                      category={event.category}
+                      title={event.title}
+                      startTime={event.startTime}
+                      timeRange={event.timeRange}
+                      formatLabel={event.formatLabel}
+                      sources={event.sources}
+                      changeNote={event.changeNote}
+                      onSelect={() => openEventDetail(event)}
+                    />
+                  </div>
+                </Fragment>
+              );
+            })}
+            {isTodaySelected && nowIndex === visibleEvents.length ? <NowLine lineRef={nowLineRef} /> : null}
           </div>
         )}
       </section>

@@ -32,7 +32,7 @@ export function LoginView() {
 
   const [role, setRole] = useState<UserRole>("student");
   const [studentCode, setStudentCode] = useState("");
-  const [team, setTeam] = useState("");
+  const [squad, setSquad] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -76,7 +76,7 @@ export function LoginView() {
           setErrorMessage("Vui lòng nhập mã học viên để tiếp tục.");
           return;
         }
-        const me = await enterStudent(studentCode.trim(), team.trim());
+        const me = await enterStudent(studentCode.trim(), squad.trim());
         showToast(`Đã mở lịch của ${me.short_name || me.student_id} · lớp ${me.class}`, "success");
         router.push("/");
         return;
@@ -184,15 +184,14 @@ export function LoginView() {
                 />
 
                 <Input
-                  label="Số nhóm (không bắt buộc)"
-                  name="team"
+                  label="Mã team 4 người (không bắt buộc)"
+                  name="squad"
                   type="text"
-                  inputMode="numeric"
-                  tabularNums
-                  value={team}
-                  onChange={(e) => setTeam(e.target.value)}
-                  placeholder="Ví dụ: 18"
-                  helperText="Tuần đầu chưa chia nhóm thì để trống, sau này sửa trong Cài đặt."
+                  maxLength={40}
+                  value={squad}
+                  onChange={(e) => setSquad(e.target.value)}
+                  placeholder="Ví dụ: T050"
+                  helperText="Dùng để họp team. Nhóm mentor tự lấy từ Phoenix."
                 />
 
                 {setup && !setup.timetable ? (

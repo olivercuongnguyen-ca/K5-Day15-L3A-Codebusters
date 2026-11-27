@@ -34,7 +34,7 @@ const categoryLabelMap: Record<ScheduleEvent["category"], string> = {
   coaching: "Workshop",
   officehour: "Hỗ trợ / Lab",
   duty: "Mentor duty",
-  meeting: "Họp nhóm",
+  meeting: "Họp team",
   deadline: "Hạn nộp",
 };
 

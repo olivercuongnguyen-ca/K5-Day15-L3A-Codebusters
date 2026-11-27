@@ -1,6 +1,6 @@
 const $ = s => document.querySelector(s);
 const DOW = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
-const KIND = {team_meeting: 'Họp nhóm', LEC: 'Lý thuyết', LAB: 'Thực hành', ONL: 'Học online', KG: 'Khai giảng', HACK: 'Hackathon',
+const KIND = {team_meeting: 'Họp team', LEC: 'Lý thuyết', LAB: 'Thực hành', ONL: 'Học online', KG: 'Khai giảng', HACK: 'Hackathon',
   event: 'Workshop / Office hour', mentor_duty: 'Mentor duty', deadline: 'Hạn nộp', other: 'Sự kiện'};
 const state = {view: 'day', day: null, sid: null, share: null, monday: null, week: null, upcoming: [], buildings: null, current: null,
   filters: new Set(['class', 'event', 'duty', 'meeting', 'deadline']), team: ''};
@@ -219,7 +219,7 @@ function openPanel(id) {
   const mc = $('#mcancel');
   if (mc) mc.addEventListener('click', async () => {
     try { await api('/api/meetings/' + encodeURIComponent(x.id), {method: 'DELETE'}); closePanel(); loadWeek(); }
-    catch (err) { $('#mcmsg').className = 'msg err'; $('#mcmsg').textContent = err.message.includes('mật khẩu') || err.message.includes('Đăng nhập') ? 'Mở "Đặt lịch họp nhóm" và đăng nhập trước khi huỷ.' : err.message; }
+    catch (err) { $('#mcmsg').className = 'msg err'; $('#mcmsg').textContent = err.message.includes('mật khẩu') || err.message.includes('Đăng nhập') ? 'Mở "Đặt lịch họp team" và đăng nhập trước khi huỷ.' : err.message; }
   });
   showMap(x.source === 'tkb' && x.kind !== 'ONL' ? x.my_room : null);
   $('#leave').hidden = x.source !== 'tkb' || !!state.share;
@@ -236,10 +236,12 @@ function showMeetCard() {
   const me = state.student;
   if (!me || state.share) return;
   $('#meetcard').hidden = false;
-  $('#meetstate').innerHTML = me.team
-    ? `Đặt lịch họp cho <b>${esc(me.team)}</b>. App gợi ý giờ cả nhóm không có lịch học hay mentor duty, rồi báo cho mọi người.`
-    : 'Bạn chưa có nhóm. Nhập số nhóm trong <a href="#caidat">Cài đặt</a> để đặt lịch họp nhóm.';
-  $('#meetopen').disabled = !me.team;
+  // meetings are per 4-person team (me.squad); the nhóm (me.team) is the mentor group and only shares mentor duty
+  $('#meetstate').innerHTML = me.squad
+    ? `Đặt lịch họp cho team <b>${esc(me.squad)}</b>. App gợi ý giờ cả team không có lịch học hay mentor duty, rồi báo cho mọi người.`
+    : 'Bạn chưa có team. Nhập tên team 4 người của bạn để đặt lịch họp team.';
+  $('#squadform').hidden = !!me.squad;
+  $('#meetopen').disabled = !me.squad;
 }
 
 function meetAuthUi() {
@@ -250,7 +252,7 @@ function meetAuthUi() {
   $('#mpwlabel').textContent = me.has_password ? 'Mật khẩu của bạn' : 'Tạo mật khẩu (≥ 8 ký tự)';
   $('#mauthtext').textContent = me.has_password
     ? 'Để đặt lịch họp, đăng nhập bằng mật khẩu của bạn. Xem lịch vẫn chỉ cần mã học viên.'
-    : 'Lần đầu đặt lịch họp: tạo mật khẩu cho mã học viên của bạn. Xem lịch vẫn chỉ cần mã học viên; các bạn trong nhóm không cần mật khẩu để xem hay vào họp.';
+    : 'Lần đầu đặt lịch họp: tạo mật khẩu cho mã học viên của bạn. Xem lịch vẫn chỉ cần mã học viên; các bạn trong team không cần mật khẩu để xem hay vào họp.';
 }
 
 async function loadSuggestions() {
@@ -259,9 +261,9 @@ async function loadSuggestions() {
   try {
     const r = await api(`/api/meetings/suggest?duration=${$('#mdur').value}`);
     $('#mteam').textContent = `${r.team} · ${r.members} thành viên`;
-    if (!r.suggestions.length) { box.innerHTML = '<p class="muted">7 ngày tới không có khung giờ nào cả nhóm cùng rảnh (08:00–22:00). Bạn vẫn có thể tự chọn giờ ở dưới.</p>'; return; }
+    if (!r.suggestions.length) { box.innerHTML = '<p class="muted">7 ngày tới không có khung giờ nào cả team cùng rảnh (08:00–22:00). Bạn vẫn có thể tự chọn giờ ở dưới.</p>'; return; }
     box.innerHTML = r.suggestions.map((g, k) => `<button type="button" class="sug" role="listitem" data-k="${k}">
-      <b>${whenOf(g.start, g.end)}</b>${g.optional_overlaps.length ? `<small>Trùng: ${esc(g.optional_overlaps.join(', '))} (không bắt buộc)</small>` : '<small>Cả nhóm đều rảnh</small>'}</button>`).join('');
+      <b>${whenOf(g.start, g.end)}</b>${g.optional_overlaps.length ? `<small>Trùng: ${esc(g.optional_overlaps.join(', '))} (không bắt buộc)</small>` : '<small>Cả team đều rảnh</small>'}</button>`).join('');
     box.querySelectorAll('.sug').forEach(b => b.addEventListener('click', () => pickSlot(r.suggestions[+b.dataset.k], b)));
     if (!$('#mdate').value) {  // prefill the first slot that clashes with nothing, optional events included
       const k = Math.max(0, r.suggestions.findIndex(g => !g.optional_overlaps.length));
@@ -303,13 +305,20 @@ async function submitMeet(force) {
     const r = await post('/api/meetings', body);
     closePanel();
     await loadWeek();
-    $('#notices').insertAdjacentHTML('afterbegin', `<div class="notice info">${icon('i-video')}<span>Đã đặt lịch họp ${esc(r.team)} lúc <b>${whenOf(r.start, r.end)}</b> và báo cho cả nhóm.</span></div>`);
+    $('#notices').insertAdjacentHTML('afterbegin', `<div class="notice info">${icon('i-video')}<span>Đã đặt lịch họp ${esc(r.team)} lúc <b>${whenOf(r.start, r.end)}</b> và báo cho cả team.</span></div>`);
   } catch (err) {
     msg.className = 'msg err'; msg.textContent = err.message;
     $('#mforce').hidden = !/^Trùng lịch/.test(err.message);
   }
 }
 $('#meetopen').addEventListener('click', openMeet);
+$('#squadform').addEventListener('submit', async e => {
+  e.preventDefault();
+  try {
+    const me = await api('/api/student/squad', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({squad: $('#squadin').value.trim()})});
+    Object.assign(state.student, me); showMeetCard(); loadWeek();
+  } catch (err) { $('#meetstate').textContent = err.message; }
+});
 $('#mclose').addEventListener('click', closePanel);
 $('#mdur').addEventListener('change', () => { $('#mdate').value = ''; loadSuggestions(); });
 $('#meetform').addEventListener('submit', e => { e.preventDefault(); submitMeet(false); });
@@ -513,7 +522,7 @@ $('#who').addEventListener('submit', async e => {
   const msg = $('#whomsg');
   msg.className = 'msg'; msg.textContent = 'Đang mở lịch…';
   let me;
-  try { me = await post('/api/student/enter', {student_id: $('#sid').value.trim(), team: $('#team0').value.trim()}); }
+  try { me = await post('/api/student/enter', {student_id: $('#sid').value.trim(), squad: $('#squad0').value.trim()}); }
   catch (err) {
     msg.className = 'msg err';
     msg.textContent = state.setup && !state.setup.timetable ? 'App chưa có thời khoá biểu. Tải file thời khoá biểu ở bước 1 trước.'
@@ -556,18 +565,9 @@ $('#switch').addEventListener('click', async () => {
 
 function showTeam(me) {
   $('#teamstate').innerHTML = me.team
-    ? `Bạn đang ở <b>${esc(me.team)}</b>${me.team_set_by === 'phoenix' ? ' (lấy từ lịch Phoenix)' : ''}. Lịch mentor duty và thay đổi của mentor sẽ theo nhóm này.`
-    : 'Chưa có nhóm. Khi được chia nhóm, nhập số nhóm để nhận lịch và thông báo mentor duty.';
-  $('#teamin').value = me.team ? me.team.replace(/\D/g, '') : '';
+    ? `Bạn đang ở <b>${esc(me.team)}</b> (lấy từ lịch Phoenix). Lịch mentor duty và thay đổi của mentor sẽ theo nhóm này.`
+    : 'Chưa biết nhóm mentor. App tự lấy từ lịch mentor duty trên Phoenix sau khi bạn kết nối Phoenix và được chia nhóm.';
 }
-$('#teamform').addEventListener('submit', async e => {
-  e.preventDefault();
-  try {
-    const me = await api('/api/student/team', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({team: $('#teamin').value.trim()})});
-    showTeam(me); $('#teammsg').className = 'msg ok'; $('#teammsg').textContent = me.team ? 'Đã lưu.' : 'Đã xoá số nhóm.';
-    loadWeek();
-  } catch (err) { $('#teammsg').className = 'msg err'; $('#teammsg').textContent = err.message; }
-});
 
 async function onStudent(me) {
   state.staff = false; state.student = me; showMeetCard();

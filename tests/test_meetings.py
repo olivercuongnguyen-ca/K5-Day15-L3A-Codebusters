@@ -1,4 +1,5 @@
-"""Team meetings on SYNTHETIC data: free-time suggestions, sign-in to schedule, teammates see it without signing in."""
+"""Team meetings on SYNTHETIC data: free-time suggestions, sign-in to schedule, teammates see it without signing in.
+A team (4 people, students.squad) is who meets; a nhóm (mentor group, students.team) only shares mentor duty."""
 import os
 import sys
 from datetime import datetime
@@ -37,7 +38,10 @@ def env(tmp_path, monkeypatch):
     con = store.connect()
     store.ingest_tkb(con, tkb_html())
     store.ingest_phoenix(con, "SV0001", ics_feed.parse(ICS))   # SV0001 -> Nhóm 7 from the duty title
-    store.set_student_team(con, "SV0002", "7")
+    with con:  # as if read from Phoenix: same nhóm as SV0001
+        con.execute("UPDATE students SET team='Nhóm 7', team_source='phoenix' WHERE id='SV0002'")
+    store.set_student_squad(con, "SV0001", "Codebusters")
+    store.set_student_squad(con, "SV0002", "  codebusters ")       # same team: case and spaces do not matter
     from codebase.web import server
     return con, server.app, sent
 
@@ -55,7 +59,7 @@ def test_suggestions_avoid_required_schedule(env):
     # 23/11: free 08:00–09:00 and 13:00–14:00 (LAB 09–13, mentor duty 10–11, LEC 14–18); 24/11 is a holiday
     assert starts[:2] == ["2026-11-23T08:00", "2026-11-23T13:00"]
     assert starts[2] == "2026-11-24T08:00"
-    assert s["team"] == "Nhóm 7" and s["members"] == 2
+    assert s["team"] == "Codebusters" and s["members"] == 2
 
 
 def test_scheduling_needs_a_password_and_teammates_see_it(env):
@@ -74,8 +78,10 @@ def test_scheduling_needs_a_password_and_teammates_see_it(env):
     s2 = student(app, "SV0002")                                             # teammate: ID only, no password
     items = [i for i in s2.get("/api/week?monday=2026-11-23").json()["items"] if i["kind"] == "team_meeting"]
     assert items and items[0]["url"] == meet["link"] and items[0]["passcode"] == "4321"
-    store.set_student_team(con, "SV0002", "9")                              # another team does not see it
+    # same nhóm (mentor group) but another team: does not see the meeting
+    assert s2.put("/api/student/squad", json={"squad": "Other team"}).json()["squad"] == "Other team"
     assert not [i for i in s2.get("/api/week?monday=2026-11-23").json()["items"] if i["kind"] == "team_meeting"]
+    assert s2.put("/api/student/squad", json={"squad": "x"}).status_code == 400   # too short
 
 
 def test_clash_needs_confirmation_and_only_organizer_cancels(env):
@@ -100,6 +106,7 @@ def test_clash_needs_confirmation_and_only_organizer_cancels(env):
 
 def test_student_without_team_cannot_schedule(env):
     con, app, _ = env
-    store.set_student_team(con, "SV0002", "")
+    store.set_student_squad(con, "SV0002", "")  # still in a nhóm, but no team
     s2 = student(app, "SV0002")
-    assert s2.get("/api/meetings/suggest").status_code == 400
+    r = s2.get("/api/meetings/suggest")
+    assert r.status_code == 400 and "team" in r.json()["detail"]

@@ -22,11 +22,22 @@ const FILTER_OPTIONS: Array<{ key: EventFilter; label: string }> = [
   { key: "coaching", label: "Coaching" },
   { key: "officehour", label: "Trực hỗ trợ" },
   { key: "duty", label: "Mentor duty" },
-  { key: "meeting", label: "Họp nhóm" },
+  { key: "meeting", label: "Họp team" },
   { key: "deadline", label: "Hạn nộp" },
 ];
 
 const WEEKDAY_HEADERS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+
+/** Empty-day text that names what the filter shows, e.g. "Không có mentor duty". */
+const EMPTY_LABEL: Record<EventFilter, string> = {
+  all: "Không có lịch",
+  session: "Không có buổi học",
+  coaching: "Không có coaching / workshop",
+  officehour: "Không có giờ trực hỗ trợ",
+  duty: "Không có mentor duty",
+  meeting: "Không có họp team",
+  deadline: "Không có hạn nộp",
+};
 
 function monthGrid(monthKey: string) {
   const first = new Date(`${monthKey}-01T00:00:00`);
@@ -241,10 +252,10 @@ export function CalendarView() {
               <div className="bg-surface border border-border rounded-[20px] p-6 flex flex-col items-center text-center gap-2">
                 <CalendarIcon size={22} className="text-text-secondary" />
                 <p className="text-[15px] font-medium text-text-primary">
-                  Không có sự kiện phù hợp trong ngày này
+                  {EMPTY_LABEL[filter]} trong ngày này
                 </p>
                 <p className="text-[13px] text-text-secondary">
-                  Thử chọn ngày khác trên lịch hoặc chuyển bộ lọc về Tất cả.
+                  {filter === "all" ? "Thử chọn ngày khác trên lịch." : "Thử chọn ngày khác trên lịch hoặc chuyển bộ lọc về Tất cả."}
                 </p>
               </div>
             ) : (
@@ -291,7 +302,7 @@ export function CalendarView() {
 
                 {dayEvents.length === 0 ? (
                   <div className="p-4 rounded-[16px] bg-surface/65 border border-dashed border-border text-[13px] text-text-secondary">
-                    Chưa có sự kiện nào phù hợp với bộ lọc hiện tại.
+                    {EMPTY_LABEL[filter]}
                   </div>
                 ) : (
                   <div className="flex flex-col gap-2.5">

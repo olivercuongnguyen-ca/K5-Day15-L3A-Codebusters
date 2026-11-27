@@ -1,6 +1,6 @@
 import type { DateStripItem, EventCategory } from "@/components/ui";
 
-export type SourceName = "Outlook" | "Phoenix" | ".ics" | "Nhóm";
+export type SourceName = "Outlook" | "Phoenix" | ".ics" | "Team";
 export type CohortGroupId = "L3A" | "L3B" | "L2A" | "L2B";
 
 export interface SimpleRoomLocation {
