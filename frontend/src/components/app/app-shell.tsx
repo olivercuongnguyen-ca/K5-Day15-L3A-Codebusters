@@ -5,11 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
 import {
-  MOCK_SOURCES,
-  getNextUpcomingEvent,
-  getUpcomingDeadlines,
-} from "@/data/mock-schedule";
-import {
   Badge,
   CalendarIcon,
   ChevronRightIcon,
@@ -18,7 +13,7 @@ import {
   SettingsIcon,
   TodayIcon,
 } from "@/components/ui";
-import { useApp } from "./app-provider";
+import { useApp, useHydrated } from "./app-provider";
 import { NAV_ROUTES, type NavRouteItem } from "./snake-bottom-nav";
 
 function renderSidebarIcon(key: NavRouteItem["key"]) {
@@ -39,11 +34,15 @@ export interface AppShellProps {
 
 export function AppShell({ children, hideRightAside = false }: AppShellProps) {
   const pathname = usePathname();
-  const { openEventDetail, currentUser } = useApp();
+  const { openEventDetail, currentUser: user, schedule } = useApp();
+  const hydrated = useHydrated();
+  // signed-in details only after hydration (see useHydrated)
+  const currentUser = hydrated ? user : { ...user, name: "", initials: "", roleLabel: "", studentCode: "", shortName: "" };
 
-  const nextEvent = getNextUpcomingEvent();
-  const upcomingDeadlines = getUpcomingDeadlines().slice(0, 2);
-  const phoenixSource = MOCK_SOURCES.find((s) => s.id === "phoenix");
+  const nextEvent = schedule.getNextUpcomingEvent();
+  const upcomingDeadlines = schedule.getUpcomingDeadlines().slice(0, 2);
+  const timetableSource = schedule.sources.find((s) => s.id === "outlook");
+  const phoenixSource = schedule.sources.find((s) => s.id === "phoenix");
 
   return (
     <div className="min-h-dvh bg-background text-text-primary flex flex-col md:flex-row max-w-[1440px] w-full mx-auto pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
@@ -154,22 +153,24 @@ export function AppShell({ children, hideRightAside = false }: AppShellProps) {
       </main>
 
       {/* Desktop Right Contextual Column (1024px–1440px+) */}
-      {!hideRightAside ? (
+      {!hideRightAside && hydrated ? (
         <aside
           aria-label="Buổi tiếp theo và hạn nộp"
           className="hidden lg:flex lg:flex-col lg:w-80 xl:w-[340px] shrink-0 gap-5 py-8 pr-6 xl:pr-8 sticky top-0 self-start"
         >
-          <EventCard
-            variant="featured"
-            category={nextEvent.category}
-            title={nextEvent.title}
-            timeRange={nextEvent.timeRange}
-            formatLabel={nextEvent.formatLabel}
-            sources={nextEvent.sources}
-            changeNote={nextEvent.changeNote}
-            ctaLabel={nextEvent.ctaLabel}
-            onCtaClick={() => openEventDetail(nextEvent)}
-          />
+          {nextEvent ? (
+            <EventCard
+              variant="featured"
+              category={nextEvent.category}
+              title={nextEvent.title}
+              timeRange={nextEvent.timeRange}
+              formatLabel={nextEvent.formatLabel}
+              sources={nextEvent.sources}
+              changeNote={nextEvent.changeNote}
+              ctaLabel={nextEvent.ctaLabel}
+              onCtaClick={() => openEventDetail(nextEvent)}
+            />
+          ) : null}
 
           <section
             aria-label="Hạn nộp sắp tới"
@@ -231,17 +232,16 @@ export function AppShell({ children, hideRightAside = false }: AppShellProps) {
             </div>
 
             <div className="flex flex-wrap items-center gap-1.5">
-              <Badge variant="success" dot>
-                Outlook: Đã kết nối
+              <Badge variant={timetableSource?.status === "connected" ? "success" : "warning"} dot>
+                Thời khoá biểu: {timetableSource?.statusLabel ?? "…"}
               </Badge>
-              <Badge variant="warning">
-                Phoenix: {phoenixSource?.statusLabel}
+              <Badge variant={phoenixSource?.status === "connected" ? "success" : "warning"}>
+                Phoenix: {phoenixSource?.statusLabel ?? "…"}
               </Badge>
             </div>
 
             <p className="text-[12px] leading-[18px] text-text-secondary">
-              Dữ liệu mẫu phục vụ trình diễn giao diện, chưa đồng bộ tài khoản
-              thật.
+              {timetableSource?.lastUpdatedLabel ?? "Đang tải nguồn lịch…"}
             </p>
           </section>
         </aside>

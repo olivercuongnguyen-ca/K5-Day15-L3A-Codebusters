@@ -18,6 +18,16 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  // Same-origin proxy to the FastAPI backend (codebase/web/server.py), so its cookies work as first-party.
+  async rewrites() {
+    const backend = process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
+    return [
+      { source: "/api/:path*", destination: `${backend}/api/:path*` },
+      { source: "/cal/:path*", destination: `${backend}/cal/:path*` },
+      { source: "/docs", destination: `${backend}/docs` },
+      { source: "/openapi.json", destination: `${backend}/openapi.json` },
+    ];
+  },
   async headers() {
     return [
       {

@@ -1,6 +1,6 @@
 import type { DateStripItem, EventCategory } from "@/components/ui";
 
-export type SourceName = "Outlook" | "Phoenix" | ".ics";
+export type SourceName = "Outlook" | "Phoenix" | ".ics" | "Nhóm";
 export type CohortGroupId = "L3A" | "L3B" | "L2A" | "L2B";
 
 export interface SimpleRoomLocation {
@@ -37,6 +37,13 @@ export interface ScheduleEvent {
   previousTimeRange?: string;
   isFromCachedSource?: boolean;
   cachedAt?: string;
+  /** Set when the event comes from the FastAPI backend (src/lib/backend.ts). */
+  joinUrl?: string;
+  passcode?: string;
+  organizer?: string;
+  cancelled?: boolean;
+  /** "LEC 15 27/11": what the leave-request agent needs to find the session. */
+  leaveHint?: string;
 }
 
 export type SourceStatus = "connected" | "needs_reconnect" | "disconnected";

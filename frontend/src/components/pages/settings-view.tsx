@@ -1,11 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { MOCK_SOURCES, type CalendarSource } from "@/data/mock-schedule";
-import { cn } from "@/lib/cn";
+import { useEffect, useState } from "react";
+import type { CalendarSource } from "@/data/mock-schedule";
+import { api, post, type StudentMe } from "@/lib/backend";
 import {
-  AlertCircleIcon,
   Badge,
   Button,
   CalendarIcon,
@@ -24,7 +22,15 @@ import {
   Sheet,
   SourceCardSkeleton,
 } from "@/components/ui";
-import { useApp } from "@/components/app/app-provider";
+import { useApp, useHydrated } from "@/components/app/app-provider";
+
+const PHOENIX_URL = "https://portal-cohort5.edufun.ai/";
+const PHOENIX_STEPS = [
+  "Mở Phoenix và đăng nhập.",
+  "Vào “Lịch sự kiện”.",
+  "Bấm “Nhắc lịch qua Google Calendar”.",
+  "Sao chép link .ics ở đó, dán vào ô bên dưới rồi bấm Kết nối.",
+];
 
 const GOOGLE_CALENDAR_STEPS = [
   "Mở Google Calendar trên máy tính.",
@@ -70,15 +76,36 @@ function renderStatusBadge(source: CalendarSource) {
 }
 
 export function SettingsView() {
-  const router = useRouter();
   const {
     currentUser,
     showToast,
-    preferences,
-    updatePreference,
-    maskedIcsUrl,
-    rotateMockIcsUrl,
+    schedule,
+    student,
+    staff,
+    setStudent,
+    logout,
   } = useApp();
+  const [calLinks, setCalLinks] = useState<{ ics: string; google: string; outlook: string } | null>(null);
+  const [teamDraft, setTeamInput] = useState<string | null>(null);  // null = show the saved team
+  const teamInput = teamDraft ?? (student?.team ? student.team.replace(/\D/g, "") : "");
+  useEffect(() => {
+    if (!student) return;
+    api<{ ics: string; google: string; outlook: string }>("/api/calendar-links").then(setCalLinks).catch(() => setCalLinks(null));
+  }, [student]);
+  const hydrated = useHydrated();
+  const maskedIcsUrl = calLinks ? calLinks.ics.replace(/\/cal\/(.{6}).*(.{4})\.ics$/, "/cal/$1••••••$2.ics") : "Đang tạo liên kết…";
+
+  async function handleSaveTeam() {
+    try {
+      const me = await post<StudentMe>("/api/student/team", { team: teamInput.trim() }, "PUT");
+      setStudent({ ...student!, ...me });
+      setTeamInput(null);
+      schedule.reload();
+      showToast(me.team ? `Đã lưu: ${me.team}` : "Đã xoá số nhóm", "success");
+    } catch (err) {
+      showToast((err as Error).message, "danger");
+    }
+  }
 
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [icsSheetOpen, setIcsSheetOpen] = useState(false);
@@ -86,59 +113,67 @@ export function SettingsView() {
     useState<CalendarSource | null>(null);
   const [icsUrl, setIcsUrl] = useState("");
   const [icsTouched, setIcsTouched] = useState(false);
-  const [showSkeletonPreview, setShowSkeletonPreview] = useState(false);
 
   const trimmedIcs = icsUrl.trim();
   const icsInvalid =
     icsTouched &&
     (trimmedIcs.length === 0 ||
-      (!trimmedIcs.startsWith("https://") &&
-        !trimmedIcs.startsWith("http://")) ||
-      !trimmedIcs.toLowerCase().includes(".ics"));
+      !trimmedIcs.startsWith("https://") ||
+      !trimmedIcs.includes("/api/events/feed/") ||
+      !trimmedIcs.toLowerCase().endsWith(".ics"));
 
   async function handleCopyIcsLink() {
     try {
       if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(maskedIcsUrl);
+        if (calLinks) await navigator.clipboard.writeText(calLinks.ics);
       }
     } catch {
       // Fallback safely in restricted contexts while keeping UX honest
     }
-    showToast("Đã sao chép liên kết lịch (bản mẫu)", "success");
+    showToast(calLinks ? "Đã sao chép liên kết lịch của bạn" : "Chưa có liên kết lịch", calLinks ? "success" : "warning");
   }
 
   function handleConfirmRotate() {
-    rotateMockIcsUrl();
     setResetDialogOpen(false);
-    showToast("Đã tạo liên kết lịch mẫu mới", "success");
+    if (calLinks) window.open(calLinks.google, "_blank", "noopener,noreferrer");
   }
 
   function handleSourceAction(source: CalendarSource) {
-    if (source.id === "ics") {
+    if (source.id === "phoenix") {
       setIcsUrl("");
       setIcsTouched(false);
       setIcsSheetOpen(true);
       return;
     }
-    setDemoDialogSource(source);
+    if (source.id === "ics") {
+      document.getElementById("google-calendar")?.scrollIntoView({ behavior: "smooth" });
+      return;
+    }
+    showToast(source.lastUpdatedLabel, "info");  // timetable: when the current version arrived
   }
 
-  function handleIcsSubmit() {
+  async function handleIcsSubmit() {
     setIcsTouched(true);
     if (
       trimmedIcs.length === 0 ||
-      (!trimmedIcs.startsWith("https://") &&
-        !trimmedIcs.startsWith("http://")) ||
-      !trimmedIcs.toLowerCase().includes(".ics")
+      !trimmedIcs.startsWith("https://") ||
+      !trimmedIcs.includes("/api/events/feed/") ||
+      !trimmedIcs.toLowerCase().endsWith(".ics")
     ) {
       return;
     }
-    setIcsSheetOpen(false);
-    showToast(
-      "Đây là bản demo — chưa hỗ trợ lưu hay đồng bộ liên kết .ics thật.",
-      "info",
-    );
+    try {
+      const r = await post<{ events: number }>("/api/phoenix", { url: trimmedIcs });
+      setIcsSheetOpen(false);
+      setIcsUrl("");
+      schedule.reload();
+      showToast(`Đã kết nối lịch Phoenix: ${r.events} sự kiện.`, "success");
+    } catch (err) {
+      showToast((err as Error).message, "danger");
+    }
   }
+
+  if (!hydrated) return <div aria-busy="true" className="min-h-[60dvh]" />;
 
   return (
     <div className="flex flex-col gap-4 md:gap-6">
@@ -183,119 +218,61 @@ export function SettingsView() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => router.push("/login")}
+          onClick={() => void logout()}
         >
           Đổi tài khoản
         </Button>
       </section>
 
-      {/* Display Preferences */}
-      <section
-        aria-label="Tùy chọn hiển thị lịch"
-        className="flex flex-col gap-2 md:gap-2.5"
-      >
-        <h2 className="text-[12px] md:text-[13px] leading-[18px] font-medium text-text-secondary px-1">
-          Tùy chọn hiển thị lịch
-        </h2>
-
-        <div className="bg-surface border border-border rounded-[20px] md:rounded-[24px] divide-y divide-border overflow-hidden shadow-card-sm">
-          <div className="p-3.5 sm:p-5 flex items-center justify-between gap-3 md:gap-4">
-            <div className="flex flex-col gap-0.5">
-              <span
-                id="pref-deadline-label"
-                className="text-[14px] leading-[20px] md:text-[15px] md:leading-[22px] font-medium text-text-primary"
-              >
-                Hiện hạn nộp trong timeline
-              </span>
-              <span className="text-[12px] leading-[17px] md:text-[13px] md:leading-[19px] text-text-secondary">
-                Hiển thị bài tập đến hạn cùng dòng thời gian các buổi học
-              </span>
-            </div>
-
-            <button
-              type="button"
-              role="switch"
-              aria-checked={preferences.showDeadlinesInTimeline}
-              aria-labelledby="pref-deadline-label"
-              onClick={() => {
-                const next = !preferences.showDeadlinesInTimeline;
-                updatePreference("showDeadlinesInTimeline", next);
-                showToast(
-                  next
-                    ? "Đã bật hiển thị hạn nộp trong timeline"
-                    : "Đã ẩn hạn nộp khỏi timeline",
-                  "info",
-                );
-              }}
-              className={cn(
-                "relative inline-flex items-center w-12 h-7 rounded-full border transition-colors duration-[180ms] shrink-0 cursor-pointer",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
-                preferences.showDeadlinesInTimeline
-                  ? "bg-primary border-primary"
-                  : "bg-background border-border",
-              )}
-            >
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "w-5 h-5 rounded-full transition-transform duration-[180ms] shadow-sm",
-                  preferences.showDeadlinesInTimeline
-                    ? "translate-x-6 bg-on-primary"
-                    : "translate-x-1 bg-text-secondary",
-                )}
-              />
-            </button>
+      {student ? (
+        <section
+          aria-label="Nhóm của bạn"
+          className="bg-surface border border-border rounded-[20px] md:rounded-[24px] p-4 md:p-5 shadow-card-sm flex flex-col gap-3"
+        >
+          <div className="flex flex-col gap-0.5">
+            <h2 className="text-[15px] leading-[21px] md:text-[17px] md:leading-[24px] font-semibold text-text-primary">
+              Nhóm của bạn
+            </h2>
+            <p className="text-[13px] leading-[19px] text-text-secondary">
+              {student.team
+                ? `Bạn đang ở ${student.team}${student.team_set_by === "phoenix" ? " (lấy từ lịch Phoenix)" : ""}. Mentor duty và lịch họp nhóm theo nhóm này.`
+                : "Chưa có nhóm. Khi được chia nhóm, nhập số nhóm để thấy mentor duty và họp nhóm."}
+            </p>
           </div>
+          <Input
+            label="Số nhóm"
+            type="text"
+            inputMode="numeric"
+            tabularNums
+            value={teamInput}
+            onChange={(e) => setTeamInput(e.target.value)}
+            placeholder="Ví dụ: 18"
+            helperText="Để trống rồi lưu để xoá số nhóm."
+            rightSlot={
+              <Button variant="primary" size="md" onClick={() => void handleSaveTeam()}>
+                Lưu
+              </Button>
+            }
+          />
+        </section>
+      ) : null}
 
-          <div className="p-3.5 sm:p-5 flex items-center justify-between gap-3 md:gap-4">
-            <div className="flex flex-col gap-0.5">
-              <span
-                id="pref-merge-label"
-                className="text-[14px] leading-[20px] md:text-[15px] md:leading-[22px] font-medium text-text-primary"
-              >
-                Gộp sự kiện trùng nguồn
-              </span>
-              <span className="text-[12px] leading-[17px] md:text-[13px] md:leading-[19px] text-text-secondary">
-                Chỉ hiển thị một mục khi Outlook và Phoenix trùng khung giờ
-              </span>
-            </div>
-
-            <button
-              type="button"
-              role="switch"
-              aria-checked={preferences.mergeDuplicateSources}
-              aria-labelledby="pref-merge-label"
-              onClick={() => {
-                const next = !preferences.mergeDuplicateSources;
-                updatePreference("mergeDuplicateSources", next);
-                showToast(
-                  next
-                    ? "Đã bật gộp sự kiện trùng nguồn"
-                    : "Đã tắt gộp sự kiện trùng nguồn",
-                  "info",
-                );
-              }}
-              className={cn(
-                "relative inline-flex items-center w-12 h-7 rounded-full border transition-colors duration-[180ms] shrink-0 cursor-pointer",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
-                preferences.mergeDuplicateSources
-                  ? "bg-primary border-primary"
-                  : "bg-background border-border",
-              )}
-            >
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "w-5 h-5 rounded-full transition-transform duration-[180ms] shadow-sm",
-                  preferences.mergeDuplicateSources
-                    ? "translate-x-6 bg-on-primary"
-                    : "translate-x-1 bg-text-secondary",
-                )}
-              />
-            </button>
-          </div>
-        </div>
-      </section>
+      {staff ? (
+        <section
+          aria-label="Công cụ quản trị"
+          className="bg-surface border border-border rounded-[20px] md:rounded-[24px] p-4 md:p-5 shadow-card-sm flex flex-col gap-2"
+        >
+          <h2 className="text-[15px] leading-[21px] md:text-[17px] md:leading-[24px] font-semibold text-text-primary">
+            {staff.role === "admin" ? "Công cụ admin" : `Nhóm phụ trách: ${staff.teams.join(", ") || "chưa gán"}`}
+          </h2>
+          <p className="text-[13px] leading-[19px] text-text-secondary">
+            {staff.role === "admin"
+              ? "Cập nhật thời khoá biểu, sửa buổi học và quản lý tài khoản mentor qua API của app."
+              : "Xem và đổi ca mentor duty của nhóm qua API của app; học viên trong nhóm sẽ nhận thông báo."}{" "}
+            <a className="text-secondary underline" href="/docs" target="_blank" rel="noopener noreferrer">Mở tài liệu API</a>
+          </p>
+        </section>
+      ) : null}
 
       {/* Integrated Sources Section (#nguon-lich) */}
       <section
@@ -312,7 +289,7 @@ export function SettingsView() {
               Nguồn lịch
             </h2>
             <p className="text-[12px] leading-[18px] md:text-[13px] md:leading-[19px] text-text-secondary">
-              Tổng hợp từ Outlook, Phoenix và liên kết .ics (dữ liệu demo)
+              Thời khoá biểu từ email ban đào tạo, Phoenix của bạn, và đồng bộ ra lịch cá nhân
             </p>
           </div>
 
@@ -320,12 +297,10 @@ export function SettingsView() {
             variant="outline"
             size="sm"
             leftIcon={<RefreshIcon size={15} />}
-            onClick={() =>
-              showToast(
-                "Đây là bản demo — các nút đồng bộ chưa kết nối tài khoản thật.",
-                "info",
-              )
-            }
+            onClick={() => {
+              schedule.reload();
+              showToast("Đang tải lại lịch…", "info");
+            }}
           >
             Đồng bộ tất cả
           </Button>
@@ -334,19 +309,19 @@ export function SettingsView() {
         <div className="flex items-start gap-2.5 p-3 md:p-3.5 rounded-[14px] md:rounded-[16px] bg-surface-subtle border border-border text-text-primary">
           <InfoIcon size={16} className="text-primary shrink-0 mt-0.5 md:w-[18px] md:h-[18px]" />
           <span className="text-[12px] leading-[18px] md:text-[13px] md:leading-[19px] text-text-secondary text-pretty">
-            Chế độ xem thử (Demo): thao tác kết nối hoặc thử lại chỉ mô phỏng
-            giao diện, không giả lập kết nối tài khoản thật.
+            Phoenix tự cập nhật mỗi giờ. Link Phoenix là riêng tư: app chỉ dùng để đọc lịch của bạn, không
+            hiển thị lại và không gửi cho AI.
           </span>
         </div>
 
-        {showSkeletonPreview ? (
+        {schedule.sources.length === 0 ? (
           <div className="flex flex-col gap-2.5 md:gap-3" aria-busy="true">
             <SourceCardSkeleton />
             <SourceCardSkeleton />
           </div>
         ) : (
           <div className="flex flex-col gap-2.5 md:gap-3">
-            {MOCK_SOURCES.map((source) => (
+            {schedule.sources.map((source) => (
               <article
                 key={source.id}
                 className="bg-surface border border-border rounded-[20px] md:rounded-[24px] p-4 md:p-5 shadow-card-sm flex flex-col gap-3 md:gap-3.5"
@@ -397,30 +372,6 @@ export function SettingsView() {
           </div>
         )}
 
-        <div className="bg-surface border border-border rounded-[20px] p-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="success" dot size="sm">
-              Đã kết nối
-            </Badge>
-            <Badge variant="warning" size="sm">
-              Cần kết nối lại
-            </Badge>
-            <Badge
-              variant="danger"
-              size="sm"
-              icon={<AlertCircleIcon size={13} />}
-            >
-              Cập nhật thất bại
-            </Badge>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowSkeletonPreview((prev) => !prev)}
-          >
-            {showSkeletonPreview ? "Hiện nguồn lịch" : "Xem trạng thái tải"}
-          </Button>
-        </div>
       </section>
 
       {/* Google Calendar Integration Guide */}
@@ -441,19 +392,19 @@ export function SettingsView() {
               Mang lịch học vào Google Calendar
             </h2>
             <p className="text-[13px] leading-[19px] md:text-[14px] md:leading-[21px] text-text-secondary text-pretty">
-              Đăng ký liên kết lịch cá nhân (giả lập) để theo dõi lịch học và
-              hạn nộp trên Google Calendar.
+              Đăng ký liên kết lịch cá nhân để thấy lịch học, phòng, mentor duty, họp nhóm và
+              hạn nộp ngay trong Google Calendar hoặc Outlook.
             </p>
           </div>
         </div>
 
         <Input
-          label="Liên kết đăng ký lịch (.ics mẫu)"
+          label="Liên kết đăng ký lịch (.ics) của bạn"
           type="text"
           readOnly
           tabularNums
           value={maskedIcsUrl}
-          helperText="Đây là liên kết mẫu dùng để kiểm thử thao tác sao chép."
+          helperText="Riêng cho bạn. Không có link Zoom hay link Phoenix trong lịch này."
           rightSlot={
             <Button
               variant="primary"
@@ -513,9 +464,17 @@ export function SettingsView() {
           size="lg"
           fullWidth
           className="text-danger hover:bg-danger-background hover:border-danger/30"
-          onClick={() => setResetDialogOpen(true)}
+          onClick={() => calLinks && window.open(calLinks.google, "_blank", "noopener,noreferrer")}
         >
-          Tạo liên kết mới
+          Thêm vào Google Calendar
+        </Button>
+        <Button
+          variant="outline"
+          size="lg"
+          fullWidth
+          onClick={() => calLinks && window.open(calLinks.outlook, "_blank", "noopener,noreferrer")}
+        >
+          Thêm vào Outlook
         </Button>
       </section>
 
@@ -527,13 +486,7 @@ export function SettingsView() {
           fullWidth
           leftIcon={<LogOutIcon size={18} />}
           className="text-danger hover:bg-danger-background hover:border-danger/30"
-          onClick={() => {
-            showToast(
-              "Đã quay về màn hình đăng nhập mẫu (chưa có phiên xác thực thật).",
-              "info",
-            );
-            router.push("/login");
-          }}
+          onClick={() => void logout()}
         >
           Đăng xuất
         </Button>
@@ -594,8 +547,8 @@ export function SettingsView() {
         placement="drawer"
         size="sm"
         onOpenChange={setIcsSheetOpen}
-        title="Thêm liên kết .ics"
-        subtitle="Bản demo kiểm tra định dạng URL, chưa kết nối máy chủ thật"
+        title="Kết nối lịch Phoenix"
+        subtitle="Kết nối bằng link .ics của Phoenix để thấy workshop, mentor duty và hạn nộp"
         footer={
           <Button
             variant="primary"
@@ -603,22 +556,46 @@ export function SettingsView() {
             fullWidth
             onClick={handleIcsSubmit}
           >
-            Kiểm tra liên kết (Demo)
+            Kết nối
           </Button>
         }
       >
+        <div className="p-3.5 rounded-[16px] bg-background border border-border flex flex-col gap-2.5">
+          <h3 className="text-[14px] leading-[20px] font-semibold text-text-primary">Lấy link trên Phoenix</h3>
+          <ol className="flex flex-col gap-2">
+            {PHOENIX_STEPS.map((step, index) => (
+              <li key={step} className="flex items-start gap-2.5">
+                <span className="w-5 h-5 rounded-full bg-sage-background text-on-sage text-[11px] font-semibold inline-flex items-center justify-center shrink-0 mt-0.5 tabular-nums">
+                  {index + 1}
+                </span>
+                <span className="text-[13px] leading-[19px] text-text-primary">{step}</span>
+              </li>
+            ))}
+          </ol>
+          <a
+            href={PHOENIX_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-1.5 self-start min-h-9 px-4 rounded-full border border-border bg-surface text-[13px] font-medium text-text-primary hover:bg-surface-subtle transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            Mở Phoenix
+          </a>
+          <p className="text-[12px] leading-[17px] text-text-secondary">
+            Ai có link này đều xem được lịch Phoenix của bạn. Nếu lỡ để lộ, bấm “Tạo link mới” trên Phoenix rồi dán lại link mới ở đây.
+          </p>
+        </div>
         <Input
-          label="URL nguồn lịch (.ics)"
+          label="Link lịch Phoenix (.ics)"
           type="url"
           value={icsUrl}
           onChange={(e) => setIcsUrl(e.target.value)}
-          placeholder="https://truonghoc.edu.vn/lich-hoc.ics"
+          placeholder="https://phoenix.note.transformerlabs.ai/api/events/feed/….ics"
           error={
             icsInvalid
-              ? "Vui lòng nhập URL hợp lệ bắt đầu bằng https:// và có đuôi .ics"
+              ? "Dán đúng link lịch Phoenix: https://…/api/events/feed/….ics"
               : undefined
           }
-          helperText="Liên kết riêng tư sẽ được che bớt token khi hiển thị trên danh sách."
+          helperText="Link riêng tư của bạn. App không hiển thị lại link này."
         />
       </Sheet>
     </div>

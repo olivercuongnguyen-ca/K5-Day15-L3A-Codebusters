@@ -188,9 +188,9 @@ class TeamIn(BaseModel):
 
 
 def _student_info(con, sid, request: Request = None):
-    st = con.execute("SELECT id, class, team, team_source FROM students WHERE id=?", (sid,)).fetchone()
+    st = con.execute("SELECT id, class, team, team_source, short_name FROM students WHERE id=?", (sid,)).fetchone()
     signed = auth.student_for_token(con, request.cookies.get(STUDENT_AUTH)) if request else None
-    return {"student_id": st["id"], "class": st["class"], "team": st["team"],
+    return {"student_id": st["id"], "class": st["class"], "team": st["team"], "short_name": st["short_name"],
             "team_set_by": st["team_source"], "has_password": auth.student_has_password(con, sid),
             "signed_in": bool(signed and signed[0] == sid), "must_change": bool(signed and signed[1])}
 
@@ -450,11 +450,21 @@ def push_test(user=Depends(student_only)):
     return {"sent": n}
 
 
+def _public_base(request: Request) -> str:
+    """The address the user actually sees. Behind a proxy (Unify's Next.js rewrites) that is the forwarded host,
+    not the backend's own 127.0.0.1:8000."""
+    host = request.headers.get("x-forwarded-host")
+    if host:
+        proto = request.headers.get("x-forwarded-proto", request.url.scheme).split(",")[0].strip()
+        return "%s://%s" % (proto, host.split(",")[0].strip())
+    return str(request.base_url).rstrip("/")
+
+
 # ---- Sync to Google Calendar / Outlook ----
 @app.get("/api/calendar-links")
 def calendar_links(request: Request, user=Depends(student_only)):
     tok = store.token_for(store.connect(), user["student_id"], "cal")
-    https = str(request.base_url).rstrip("/") + "/cal/%s.ics" % tok
+    https = _public_base(request) + "/cal/%s.ics" % tok
     webcal = https.replace("https://", "webcal://").replace("http://", "webcal://")
     q = urllib.parse.quote
     return {"ics": https, "webcal": webcal,
@@ -475,7 +485,7 @@ def cal(token: str):
 @app.get("/api/share")
 def share(request: Request, user=Depends(student_only)):
     tok = store.token_for(store.connect(), user["student_id"], "share")
-    return {"url": str(request.base_url).rstrip("/") + "/#share-" + tok}
+    return {"url": _public_base(request) + "/#share-" + tok}
 
 
 @app.get("/api/shared/{token}")

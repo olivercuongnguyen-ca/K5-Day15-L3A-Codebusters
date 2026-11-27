@@ -1,3 +1,22 @@
+# Unify (frontend) — Lịch AI20K
+
+Unify's screens run on the real backend (FastAPI, `codebase/web/server.py`) — no mock data:
+today / week / month schedule, room map, AI leave-request draft, team meetings, settings (Phoenix link, team,
+calendar sync), student ID entry and admin / mentor sign-in.
+
+```bash
+# 1. backend (repo root), port 8000
+python3 run.py
+# 2. this app, port 3000 — /api/* is proxied to the backend (next.config.ts), so cookies just work
+cd frontend && npm install && npm run dev
+```
+
+Another backend address: `BACKEND_URL=http://host:port npm run dev`. Data access lives in `src/lib/backend.ts`
+(API client + backend item → `ScheduleEvent`) and `src/components/app/app-provider.tsx` (identity, schedule).
+The `src/data/mock-*.ts` files only keep the shared types and the design-system showcase data.
+
+---
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

@@ -1,17 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  MOCK_EVENTS,
-  MOCK_WEEK_DAYS,
-  TODAY_DATE_KEY,
-  TODAY_HEADING_DATE,
-  getDateHeading,
-  getEventsForDate,
-  getNextUpcomingEvent,
-  getUpcomingDeadlines,
-} from "@/data/mock-schedule";
 import { cn } from "@/lib/cn";
 import {
   Badge,
@@ -26,50 +16,47 @@ import {
   EventCardSkeleton,
   IconButton,
   MailIcon,
+  VideoIcon,
 } from "@/components/ui";
-import { useApp } from "@/components/app/app-provider";
-
-type PreviewMode = "normal" | "loading" | "empty" | "partial_error";
-
-const PREVIEW_OPTIONS: Array<{ key: PreviewMode; label: string }> = [
-  { key: "normal", label: "Bình thường" },
-  { key: "loading", label: "Đang tải" },
-  { key: "empty", label: "Trống" },
-  { key: "partial_error", label: "Lỗi 1 nguồn" },
-];
+import { useApp, useHydrated } from "@/components/app/app-provider";
 
 export function TodayView() {
-  const { currentUser, openEventDetail, openLeaveRequest, showToast, preferences } = useApp();
-  const [selectedDateKey, setSelectedDateKey] = useState(TODAY_DATE_KEY);
-  const [previewMode, setPreviewMode] = useState<PreviewMode>("normal");
+  const { currentUser, student, schedule, openEventDetail, openLeaveRequest, openMeetingSheet, showToast, preferences } =
+    useApp();
+  const TODAY_DATE_KEY = schedule.todayKey;
+  const [pickedDateKey, setSelectedDateKey] = useState<string | null>(null);
+  const selectedDateKey = pickedDateKey ?? TODAY_DATE_KEY;  // follows today until the student picks a day
   const [highlightBanner, setHighlightBanner] = useState(false);
+  const { ensureWeek } = schedule;
+  useEffect(() => { if (selectedDateKey) ensureWeek(selectedDateKey); }, [selectedDateKey, ensureWeek]);
 
-  const nextEvent = getNextUpcomingEvent();
-  const coachingEvent =
-    MOCK_EVENTS.find((evt) => evt.id === "evt-nov27-coaching") ?? nextEvent;
-  const upcomingDeadlines = getUpcomingDeadlines().slice(0, 2);
+  const previewMode = schedule.loading && schedule.events.length === 0 ? "loading" : "normal";
+  const nextEvent = schedule.getNextUpcomingEvent();
+  const upcomingDeadlines = schedule.getUpcomingDeadlines().slice(0, 2);
+  // the first upcoming item with a change (room moved, mentor changed duty, cancelled)
+  const changedEvent = schedule.events.find(
+    (evt) => evt.changeNote && evt.changeNote !== "Trùng giờ" && `${evt.dateKey}` >= TODAY_DATE_KEY,
+  );
+  const phoenixMissing = Boolean(schedule.latestWeek && !schedule.latestWeek.phoenix_linked);
 
-  const rawEvents = getEventsForDate(selectedDateKey, {
+  const visibleEvents = schedule.getEventsForDate(selectedDateKey, {
     includeDeadlines: preferences.showDeadlinesInTimeline,
   });
-
-  const visibleEvents =
-    previewMode === "empty"
-      ? []
-      : previewMode === "partial_error"
-        ? rawEvents.filter((evt) => evt.sources.includes("Phoenix"))
-        : rawEvents;
+  const weekDays = schedule.weekDays(selectedDateKey);
 
   const isTodaySelected = selectedDateKey === TODAY_DATE_KEY;
+  const hydrated = useHydrated();
+
+  if (!hydrated) return <div aria-busy="true" className="min-h-[60dvh]" />;
 
   return (
     <div className="flex flex-col gap-4 md:gap-6">
       {/* Top Header */}
-      <header className="flex items-start justify-between gap-3 md:gap-4">
+      <header className="flex flex-wrap items-start justify-between gap-3 md:gap-4">
         <div className="flex flex-col gap-0.5">
           <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
             <span className="text-[12px] md:text-[13px] leading-[18px] md:leading-[20px] text-text-secondary">
-              {TODAY_HEADING_DATE}
+              {schedule.todayHeading}
             </span>
             <Badge variant={currentUser.role === "student" ? "secondary" : "primary"} size="sm">
               {currentUser.roleLabel}
@@ -80,61 +67,41 @@ export function TodayView() {
           </h1>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2">
+          {student ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              leftIcon={<VideoIcon size={15} />}
+              onClick={openMeetingSheet}
+            >
+              Họp nhóm
+            </Button>
+          ) : null}
           <Button
             variant="secondary"
             size="sm"
             leftIcon={<MailIcon size={15} />}
-            onClick={() => openLeaveRequest(nextEvent)}
+            onClick={() => openLeaveRequest(nextEvent?.category === "session" ? nextEvent : undefined)}
           >
             Xin nghỉ AI
           </Button>
           <IconButton
             aria-label="Xem thông báo đổi lịch"
-            hasDot
+            hasDot={Boolean(changedEvent)}
             pressed={highlightBanner}
             icon={<BellIcon size={18} className="md:w-5 md:h-5" />}
             onClick={() => {
               setHighlightBanner((prev) => !prev);
-              showToast("Buổi coaching hôm nay đã chuyển sang 20:00", "warning");
+              showToast(changedEvent ? `${changedEvent.title}: ${changedEvent.changeNote}` : "Không có thay đổi lịch nào sắp tới.",
+                changedEvent ? "warning" : "info");
             }}
           />
         </div>
       </header>
 
-      {/* Demo State Switcher (for testing loading/empty/partial error) */}
-      <div
-        role="group"
-        aria-label="Chế độ xem trước trạng thái"
-        className="flex flex-wrap items-center gap-1 md:gap-1.5 p-1.5 md:p-2 rounded-[16px] md:rounded-[20px] bg-surface border border-border shadow-card-sm"
-      >
-        <span className="text-[11.5px] md:text-[12px] font-medium text-text-secondary px-1.5 md:px-2">
-          Trạng thái mẫu:
-        </span>
-        {PREVIEW_OPTIONS.map((opt) => {
-          const isActive = previewMode === opt.key;
-          return (
-            <button
-              key={opt.key}
-              type="button"
-              aria-pressed={isActive}
-              onClick={() => setPreviewMode(opt.key)}
-              className={cn(
-                "min-h-7 md:min-h-9 px-2.5 md:px-3 rounded-full text-[11.5px] md:text-[12px] leading-[16px] font-medium transition-colors duration-[180ms] cursor-pointer",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                isActive
-                  ? "bg-sage-background text-on-sage border border-olive/40"
-                  : "bg-background text-text-secondary hover:text-text-primary border border-transparent",
-              )}
-            >
-              {opt.label}
-            </button>
-          );
-        })}
-      </div>
-
       {/* Partial Error Banner (Phoenix failed, showing cached data) */}
-      {previewMode === "partial_error" ? (
+      {phoenixMissing ? (
         <div
           role="alert"
           className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-[20px] bg-danger-background text-on-danger-background border border-danger/20"
@@ -143,30 +110,24 @@ export function TodayView() {
             <CloudOffIcon size={20} className="shrink-0 mt-0.5" />
             <div className="flex flex-col gap-0.5">
               <span className="text-[14px] leading-[20px] font-semibold">
-                Phoenix tạm thời không cập nhật được
+                Chưa kết nối lịch Phoenix
               </span>
               <span className="text-[13px] leading-[19px]">
-                Đang hiển thị lịch đã lưu lúc 08:30 hôm nay.
+                Đang hiển thị thời khoá biểu lớp. Kết nối Phoenix để thấy workshop, mentor duty và hạn nộp.
               </span>
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              showToast(
-                "Bản demo — chưa kết nối cổng Phoenix thật để đồng bộ lại.",
-                "info",
-              )
-            }
+          <Link
+            href="/settings"
+            className="inline-flex items-center justify-center min-h-9 px-4 rounded-full border border-danger/30 text-[13px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
-            Thử lại
-          </Button>
+            Kết nối
+          </Link>
         </div>
       ) : null}
 
       {/* Schedule Change Banner */}
-      {previewMode === "normal" ? (
+      {changedEvent ? (
         <div
           className={cn(
             "flex items-center justify-between gap-2.5 md:gap-3 px-3.5 py-2.5 md:px-4 md:py-3 rounded-[16px] md:rounded-[20px] bg-warning-background text-on-warning transition-shadow duration-[180ms]",
@@ -176,13 +137,14 @@ export function TodayView() {
           <div className="flex items-center gap-2 md:gap-2.5 min-w-0">
             <ClockIcon size={17} className="shrink-0 md:w-[19px] md:h-[19px]" />
             <span className="text-[13px] md:text-[14px] leading-[18px] md:leading-[20px] text-pretty">
-              Buổi coaching đã chuyển sang{" "}
-              <strong className="font-semibold tabular-nums">20:00</strong>
+              <strong className="font-semibold">{changedEvent.title}</strong>
+              {" · "}
+              {changedEvent.changeNote}
             </span>
           </div>
           <button
             type="button"
-            onClick={() => openEventDetail(coachingEvent)}
+            onClick={() => openEventDetail(changedEvent)}
             className="text-[12px] md:text-[13px] font-medium underline underline-offset-2 shrink-0 min-h-8 md:min-h-9 px-2 rounded-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             Chi tiết
@@ -191,7 +153,7 @@ export function TodayView() {
       ) : null}
 
       {/* Mobile & Tablet Featured Card (hidden on lg+ because right aside shows it) */}
-      {previewMode !== "loading" ? (
+      {previewMode !== "loading" && nextEvent ? (
         <section aria-label="Buổi học tiếp theo" className="lg:hidden">
           <EventCard
             variant="featured"
@@ -224,21 +186,16 @@ export function TodayView() {
               </Button>
             ) : (
               <span className="text-[12px] md:text-[13px] leading-[18px] md:leading-[20px] text-text-secondary">
-                Tháng 11, 2026
+                Tháng {Number(selectedDateKey.slice(5, 7))}, {selectedDateKey.slice(0, 4)}
               </span>
             )}
           </div>
         </div>
 
         <DateStrip
-          items={MOCK_WEEK_DAYS}
+          items={weekDays}
           selectedKey={selectedDateKey}
-          onSelect={(key) => {
-            setSelectedDateKey(key);
-            if (previewMode === "empty") {
-              setPreviewMode("normal");
-            }
-          }}
+          onSelect={(key) => setSelectedDateKey(key)}
         />
       </section>
 
@@ -246,7 +203,7 @@ export function TodayView() {
       <section aria-label="Timeline lịch học" className="flex flex-col gap-2.5 md:gap-3">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-[14.5px] leading-[20px] md:text-[16px] md:leading-[24px] font-semibold text-text-primary">
-            {getDateHeading(selectedDateKey)} ·{" "}
+            {schedule.getDateHeading(selectedDateKey)} ·{" "}
             <span className="tabular-nums">{visibleEvents.length}</span> sự kiện
           </h2>
         </div>
@@ -264,7 +221,7 @@ export function TodayView() {
             </span>
             <div className="flex flex-col gap-1">
               <h3 className="text-[16px] leading-[22px] md:text-[18px] md:leading-[26px] font-semibold text-text-primary">
-                {isTodaySelected || previewMode === "empty"
+                {isTodaySelected
                   ? "Hôm nay chưa có buổi học nào"
                   : "Ngày này chưa có buổi học nào"}
               </h3>
