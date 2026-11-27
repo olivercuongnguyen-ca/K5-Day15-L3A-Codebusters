@@ -1,8 +1,11 @@
-"""Team meetings: a signed-in student schedules one for their team; every teammate sees it and gets a push.
+"""Team meetings: a signed-in student schedules one for their TEAM (4 people); every teammate sees it and gets a push.
+
+Team vs nhóm: a nhóm ("Nhóm 18", students.team) is a mentor's group of many teams and only shares mentor duty.
+A team (students.squad, a name such as "Codebusters") is who meets. Meetings are keyed by squad_key(team name).
 
 Free-time suggestions use only REQUIRED schedule as busy time:
-    class sessions of every class in the team (LEC, LAB, online, opening, hackathon)
-    the team's mentor duty (Phoenix, with mentor changes; cancelled slots are free again)
+    class sessions of every teammate's class (LEC, LAB, online, opening, hackathon)
+    mentor duty of every teammate's nhóm (Phoenix, with mentor changes; cancelled slots are free again)
     the team's other meetings
 Optional items (Phoenix workshops / office hours) never block a slot; suggestions that overlap one say so.
 Deadlines are moments, not blocks, so they never count. Times are Vietnam local (+07:00), like every schedule item.
@@ -14,6 +17,7 @@ from datetime import datetime, timedelta
 import notify
 from auth import VN, AuthError, audit
 from duties import list_duties
+from store import squad_key
 
 DAY_START, DAY_END = "08:00", "22:00"   # suggestions stay inside these hours
 STEP = timedelta(minutes=30)
@@ -32,15 +36,20 @@ def _iso(d):
 
 
 def _team_of(con, student_id):
-    row = con.execute("SELECT team FROM students WHERE id=?", (student_id,)).fetchone()
-    if not row or not row["team"]:
-        raise AuthError("Bạn chưa có nhóm. Nhập số nhóm trong Cài đặt trước khi đặt lịch họp.", 400)
-    return row["team"]
+    """(key, display name) of the student's 4-person team."""
+    row = con.execute("SELECT squad FROM students WHERE id=?", (student_id,)).fetchone()
+    if not row or not row["squad"]:
+        raise AuthError("Bạn chưa có team. Nhập tên team trong Cài đặt trước khi đặt lịch họp.", 400)
+    return squad_key(row["squad"]), row["squad"]
 
 
-def busy(con, team, day_from, day_to):
-    """(required, optional): lists of {start, end, what} for the team between two dates (inclusive)."""
-    members = con.execute("SELECT id, class FROM students WHERE team=?", (team,)).fetchall()
+def _members(con, key):
+    return con.execute("SELECT id, class, team FROM students WHERE lower(squad)=?", (key,)).fetchall()
+
+
+def busy(con, key, day_from, day_to):
+    """(required, optional): lists of {start, end, what} for team `key` between two dates (inclusive)."""
+    members = _members(con, key)
     classes = sorted({m["class"] for m in members if m["class"]})
     req, opt = [], []
     if classes:
@@ -48,12 +57,14 @@ def busy(con, team, day_from, day_to):
         for s in con.execute(q % ",".join("?" * len(classes)), (*classes, day_from, day_to)):
             req.append({"start": _dt("%sT%s" % (s["date"], s["start"])), "end": _dt("%sT%s" % (s["date"], s["end"])),
                         "what": "%s · %s" % (s["name"], s["class"])})
-    for d in list_duties(con, {"role": "mentor", "teams": [team]}, day_from, day_to):
-        if not d["cancelled"]:
-            req.append({"start": _dt(d["start"]), "end": _dt(d["end"]), "what": "Mentor duty " + team})
+    groups = sorted({m["team"] for m in members if m["team"]})  # each teammate's nhóm (usually one)
+    if groups:
+        for d in list_duties(con, {"role": "mentor", "teams": groups}, day_from, day_to):
+            if not d["cancelled"]:
+                req.append({"start": _dt(d["start"]), "end": _dt(d["end"]), "what": "Mentor duty " + d["team"]})
     for m in con.execute("SELECT title, start, \"end\" FROM team_meetings WHERE team=? AND cancelled=0 "
-                         "AND substr(start,1,10) BETWEEN ? AND ?", (team, day_from, day_to)):
-        req.append({"start": _dt(m["start"]), "end": _dt(m["end"]), "what": m["title"] or "Họp nhóm"})
+                         "AND substr(start,1,10) BETWEEN ? AND ?", (key, day_from, day_to)):
+        req.append({"start": _dt(m["start"]), "end": _dt(m["end"]), "what": m["title"] or "Họp team"})
     ids = [m["id"] for m in members]
     if ids:
         q = ("SELECT uid, min(title) title, min(start) start, min(\"end\") \"end\" FROM phoenix_events "
@@ -75,12 +86,12 @@ def _overlaps(items, a, b):
 
 def suggest(con, student_id, duration_min=60, days=7, now=None, limit=8):
     """Free slots for the whole team in the next `days` days, earliest first, at most two per day."""
-    team = _team_of(con, student_id)
+    key, team = _team_of(con, student_id)
     now = now or datetime.now(VN)
     length = timedelta(minutes=max(15, min(int(duration_min), 240)))
     first = now.date()
     last = first + timedelta(days=days - 1)
-    req, opt = busy(con, team, first.isoformat(), last.isoformat())
+    req, opt = busy(con, key, first.isoformat(), last.isoformat())
     earliest = _round_up(now + timedelta(minutes=30))
     out, per_day = [], {}
     for k in range(days):
@@ -97,14 +108,14 @@ def suggest(con, student_id, duration_min=60, days=7, now=None, limit=8):
                 t = _round_up(nxt["end"]) if nxt else end_of_day
                 continue
             t += STEP
-    members = con.execute("SELECT count(*) n FROM students WHERE team=?", (team,)).fetchone()["n"]
+    members = len(_members(con, key))
     return {"team": team, "members": members, "duration_min": int(length.total_seconds() // 60),
             "suggestions": out[:limit]}
 
 
 def create(con, student_id, start, end, link, passcode="", title="", note="", force=False, now=None):
     """Schedule a meeting. A time that clashes with required schedule needs force=True (the UI asks first)."""
-    team = _team_of(con, student_id)
+    key, team = _team_of(con, student_id)
     now = now or datetime.now(VN)
     try:
         a, b = _dt(start), _dt(end)
@@ -113,14 +124,14 @@ def create(con, student_id, start, end, link, passcode="", title="", note="", fo
     if b <= a:
         raise AuthError("Giờ kết thúc phải sau giờ bắt đầu.")
     if b - a > MAX_LENGTH:
-        raise AuthError("Một buổi họp nhóm không quá 4 giờ.")
+        raise AuthError("Một buổi họp team không quá 4 giờ.")
     if a < now - timedelta(minutes=5):
         raise AuthError("Không đặt lịch họp trong quá khứ.")
     link = (link or "").strip()
     if not LINK_RE.match(link):
         raise AuthError("Link họp phải bắt đầu bằng https:// (Google Meet, Zoom, Teams…).")
     passcode, title, note = (passcode or "").strip()[:64], (title or "").strip()[:80], (note or "").strip()[:300]
-    req, _ = busy(con, team, a.date().isoformat(), b.date().isoformat())
+    req, _ = busy(con, key, a.date().isoformat(), b.date().isoformat())
     clash = _overlaps(req, a, b)
     if clash and not force:
         raise AuthError("Trùng lịch bắt buộc của nhóm: " + "; ".join(
@@ -128,10 +139,10 @@ def create(con, student_id, start, end, link, passcode="", title="", note="", fo
     mid = "meet-" + secrets.token_hex(6)
     with con:
         con.execute("INSERT INTO team_meetings VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-                    (mid, team, title or "Họp nhóm", _iso(a), _iso(b), link, passcode, note, student_id,
+                    (mid, key, title or "Họp team", _iso(a), _iso(b), link, passcode, note, student_id,
                      now.isoformat(timespec="seconds"), 0))
     audit(con, None, "create_meeting", {"id": mid, "team": team, "by": student_id})
-    _notify_team(con, team, student_id, "%s: %s" % (team, title or "Họp nhóm"),
+    _notify_team(con, key, student_id, "Team %s: %s" % (team, title or "Họp team"),
                  "%s. Mở app để xem link tham gia." % _when(a, b))
     return {"id": mid, "team": team, "start": _iso(a), "end": _iso(b), "clashes": [c["what"] for c in clash]}
 
@@ -145,8 +156,8 @@ def cancel(con, student_id, meeting_id):
     with con:
         con.execute("UPDATE team_meetings SET cancelled=1 WHERE id=?", (meeting_id,))
     audit(con, None, "cancel_meeting", {"id": meeting_id, "by": student_id})
-    _notify_team(con, m["team"], student_id, "%s: đã huỷ họp" % m["team"],
-                 "%s (%s) đã huỷ." % (m["title"] or "Họp nhóm", _when(_dt(m["start"]), _dt(m["end"]))))
+    _notify_team(con, m["team"], student_id, "Team: đã huỷ họp",
+                 "%s (%s) đã huỷ." % (m["title"] or "Họp team", _when(_dt(m["start"]), _dt(m["end"]))))
 
 
 def _when(a, b):
@@ -154,8 +165,8 @@ def _when(a, b):
     return "%s %s %s–%s" % (dow, a.strftime("%d/%m"), a.strftime("%H:%M"), b.strftime("%H:%M"))
 
 
-def _notify_team(con, team, organizer, title, body):
-    for r in con.execute("SELECT id FROM students WHERE team=? AND id<>?", (team, organizer)).fetchall():
+def _notify_team(con, key, organizer, title, body):
+    for r in con.execute("SELECT id FROM students WHERE lower(squad)=? AND id<>?", (key, organizer)).fetchall():
         try:
             notify.send(con, r["id"], title, body, tag="meeting")
         except Exception:  # noqa: BLE001 — a failed push must not undo the meeting

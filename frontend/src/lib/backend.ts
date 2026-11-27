@@ -60,7 +60,10 @@ export interface WeekResponse {
 export interface StudentMe {
   student_id: string;
   class: string;
+  /** Nhóm: the mentor group ("Nhóm 18"); only shares mentor duty. */
   team: string | null;
+  /** Team: the 4-person team name; who meets in team meetings. */
+  squad: string | null;
   team_set_by: string | null;
   short_name: string | null;
   has_password: boolean;
@@ -155,7 +158,7 @@ export function toScheduleEvent(i: BackendItem, w: WeekResponse): ScheduleEvent 
   const category = categoryOf(i);
   const room = i.my_room || undefined;
   const online = i.kind === "ONL" || (i.source === "phoenix" && !!i.location) || i.source === "team";
-  const sources: SourceName[] = i.source === "tkb" ? ["Outlook"] : i.source === "team" ? ["Nhóm"] : ["Phoenix"];
+  const sources: SourceName[] = i.source === "tkb" ? ["Outlook"] : i.source === "team" ? ["Team"] : ["Phoenix"];
 
   let formatLabel = "Hạn nộp";
   let formatDetail = "";
@@ -181,7 +184,7 @@ export function toScheduleEvent(i: BackendItem, w: WeekResponse): ScheduleEvent 
   const updated = w.tkb_version?.received_at;
   const description =
     i.source === "tkb" ? `${KIND_LABEL[i.kind] ?? "Buổi học"} · lớp ${w.class}`
-      : i.source === "team" ? (i.note || `Họp nhóm do ${i.organizer} đặt lịch`)
+      : i.source === "team" ? (i.note || `Họp team do ${i.organizer} đặt lịch`)
         : i.is_deadline ? "Hạn nộp trên Phoenix" : i.kind === "mentor_duty" ? `Mentor duty ${w.team ?? ""}`.trim()
           : "Sự kiện trên Phoenix";
 

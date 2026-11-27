@@ -2,13 +2,15 @@
 (or `python3 run.py`, which starts it). Interactive API docs: /docs.
 
 Roles: only admins and mentors sign in (codebase/auth.py). Students have no account or password: they enter their
-student ID (and optionally a team number), which the app keeps in a plain cookie to know whose schedule to show.
+student ID (and optionally their team name; the nhóm comes from Phoenix), which the app keeps in a plain cookie to know whose schedule to show.
     public   GET /, /sw.js, /manifest, /api/buildings, /api/push/key, /cal/{token}.ics, /api/shared/{token}
              GET /api/setup/status · POST /api/setup/timetable (first upload only, while no timetable exists yet)
     student  POST /api/student/login {student_id, password, create?} (a password only to schedule team meetings)
              GET /api/meetings/suggest?duration · POST /api/meetings (signed in) · DELETE /api/meetings/{id} (organizer)
              POST /api/student/password {old, new}
-             POST /api/student/enter {student_id, team?, phoenix_url?} · GET /api/student/me · PUT /api/student/team {team}
+             POST /api/student/enter {student_id, squad?, phoenix_url?} · GET /api/student/me
+             (nhóm = mentor group, for mentor duty: read from the student's Phoenix feed, never typed)
+             PUT /api/student/squad {squad} (team = 4 people, for team meetings)
              POST /api/student/exit · GET /api/week?monday · POST /api/phoenix {url}
              POST /api/leave · POST /api/push/subscribe · POST /api/push/test · GET /api/calendar-links · GET /api/share
     staff    POST /api/auth/login {username, password} · POST /api/auth/logout · GET /api/auth/me
@@ -179,18 +181,15 @@ def change_password(body: PasswordIn, request: Request):
 # ---- Student: no account, just a student ID and an optional team ----
 class StudentIn(BaseModel):
     student_id: str
-    team: str = ""
+    squad: str = ""  # 4-person team name
     phoenix_url: str = ""
 
 
-class TeamIn(BaseModel):
-    team: str = ""
-
-
 def _student_info(con, sid, request: Request = None):
-    st = con.execute("SELECT id, class, team, team_source, short_name FROM students WHERE id=?", (sid,)).fetchone()
+    st = con.execute("SELECT id, class, team, team_source, squad, short_name FROM students WHERE id=?", (sid,)).fetchone()
     signed = auth.student_for_token(con, request.cookies.get(STUDENT_AUTH)) if request else None
-    return {"student_id": st["id"], "class": st["class"], "team": st["team"], "short_name": st["short_name"],
+    return {"student_id": st["id"], "class": st["class"], "team": st["team"], "squad": st["squad"],
+            "short_name": st["short_name"],
             "team_set_by": st["team_source"], "has_password": auth.student_has_password(con, sid),
             "signed_in": bool(signed and signed[0] == sid), "must_change": bool(signed and signed[1])}
 
@@ -205,13 +204,6 @@ def student_signed_in(request: Request):
     return {"student_id": s[0]}
 
 
-def _set_team(con, sid, team):
-    try:
-        store.set_student_team(con, sid, team)
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-
-
 @app.post("/api/student/enter")
 def student_enter(body: StudentIn, request: Request, response: FResponse):
     con = store.connect()
@@ -220,8 +212,8 @@ def student_enter(body: StudentIn, request: Request, response: FResponse):
         raise HTTPException(404, "Không tìm thấy mã học viên trong thời khoá biểu hiện tại.")
     if body.phoenix_url.strip():
         _link_phoenix(con, sid, body.phoenix_url)
-    if body.team.strip():
-        _set_team(con, sid, body.team)
+    if body.squad.strip():
+        _set_squad(con, sid, body.squad)
     response.set_cookie(STUDENT_COOKIE, sid, max_age=180 * 86400, httponly=True, samesite="lax",
                         secure=request.url.scheme == "https", path="/")
     return _student_info(con, sid)
@@ -266,11 +258,22 @@ def student_password(body: PasswordIn, request: Request):
     return {"ok": True}
 
 
-@app.put("/api/student/team")
-def student_team(body: TeamIn, student=Depends(student_only)):
+class SquadIn(BaseModel):
+    squad: str = ""
+
+
+def _set_squad(con, sid, squad):
+    try:
+        store.set_student_squad(con, sid, squad)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.put("/api/student/squad")
+def student_squad(body: SquadIn, request: Request, student=Depends(student_only)):
     con = store.connect()
-    _set_team(con, student["student_id"], body.team)
-    return _student_info(con, student["student_id"])
+    _set_squad(con, student["student_id"], body.squad)
+    return _student_info(con, student["student_id"], request)
 
 
 @app.post("/api/student/exit")

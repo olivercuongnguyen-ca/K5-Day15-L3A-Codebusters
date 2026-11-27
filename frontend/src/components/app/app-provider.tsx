@@ -49,6 +49,12 @@ type Identity =
 export interface ScheduleApi {
   loading: boolean;
   todayKey: string;
+  /** "YYYY-MM-DDTHH:MM", updated every minute; "" until the browser knows the time. */
+  now: string;
+  /** Ended before now (deadlines: due before now). */
+  isPast: (event: ScheduleEvent) => boolean;
+  /** Started and not yet ended. */
+  isOngoing: (event: ScheduleEvent) => boolean;
   todayHeading: string;
   events: ScheduleEvent[];
   latestWeek: WeekResponse | null;
@@ -67,7 +73,7 @@ interface AppContextValue {
   currentUser: DemoUserAccount;
   student: StudentMe | null;
   staff: StaffMe | null;
-  enterStudent: (studentId: string, team?: string) => Promise<StudentMe>;
+  enterStudent: (studentId: string, squad?: string) => Promise<StudentMe>;
   staffLogin: (username: string, password: string) => Promise<StaffMe>;
   refreshIdentity: () => Promise<void>;
   setStudent: (student: StudentMe) => void;
@@ -98,7 +104,7 @@ function toAccount(identity: Identity): DemoUserAccount {
     return {
       id: s.student_id, role: "student", roleLabel: "Học viên", studentCode: s.student_id, email: "",
       name: s.short_name ? `${s.short_name}` : `Học viên ${s.student_id}`, shortName: s.short_name || "bạn",
-      subtitle: `Lớp ${s.class}${s.team ? ` · ${s.team}` : ""}`, initials: initialsOf(short),
+      subtitle: `Lớp ${s.class}${s.team ? ` · ${s.team}` : ""}${s.squad ? ` · Team ${s.squad}` : ""}`, initials: initialsOf(short),
     };
   }
   if (identity.status === "staff") {
@@ -119,6 +125,12 @@ function subscribeMinute(onChange: () => void) {
   return () => clearInterval(t);
 }
 const serverToday = () => "";
+/** "2026-11-28T14:05" in local (Vietnam) time; changes once a minute, so it is a stable snapshot. */
+function getNowKey() {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${getTodayKey()}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
 
 /** Who is using this browser: a student (ID cookie), a signed-in staff member, or nobody yet. */
 async function resolveIdentity(): Promise<Identity> {
@@ -140,6 +152,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const pending = useRef(new Set<string>());
   const [loadingCount, setLoadingCount] = useState(0);
   const today = useSyncExternalStore(subscribeMinute, getTodayKey, serverToday);
+  const nowKey = useSyncExternalStore(subscribeMinute, getNowKey, serverToday);
 
   const [selectedEvent, setSelectedEvent] = useState<ScheduleEvent | null>(null);
   const [leaveSheetOpen, setLeaveSheetOpen] = useState(false);
@@ -169,8 +182,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (identity.status === "none" && !PUBLIC_PATHS.some((p) => pathname.startsWith(p))) router.replace("/login");
   }, [identity.status, pathname, router]);
 
-  const enterStudent = useCallback(async (studentId: string, team?: string) => {
-    const me = await post<StudentMe>("/api/student/enter", { student_id: studentId, team: team ?? "" });
+  const enterStudent = useCallback(async (studentId: string, squad?: string) => {
+    const me = await post<StudentMe>("/api/student/enter", { student_id: studentId, squad: squad ?? "" });
     const full = await api<StudentMe>("/api/student/me").catch(() => me);
     setWeeks({}); pending.current.clear();
     setIdentity({ status: "student", student: full });
@@ -230,10 +243,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const latestWeek = weeks[mondayOf(today)] ?? Object.values(weeks)[0] ?? null;
 
   const schedule = useMemo<ScheduleApi>(() => {
-    const nowKey = () => {
-      const d = new Date();
-      return `${getTodayKey()}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-    };
     const sources: CalendarSource[] = latestWeek ? [
       {
         id: "outlook", name: "Thời khoá biểu (email)", description: "Lịch học và phòng từ email ban đào tạo gửi hằng tuần",
@@ -255,6 +264,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return {
       loading: loadingCount > 0,
       todayKey: today,
+      now: nowKey,
+      isPast: (e) => Boolean(nowKey) && `${e.dateKey}T${e.category === "deadline" ? e.startTime : e.endTime}` <= nowKey,
+      isOngoing: (e) => Boolean(nowKey) && e.category !== "deadline"
+        && `${e.dateKey}T${e.startTime}` <= nowKey && nowKey < `${e.dateKey}T${e.endTime}`,
       todayHeading: today ? dateHeading(today, "") : "",
       events,
       latestWeek,
@@ -264,12 +277,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         e.dateKey === dateKey && ((options?.includeDeadlines ?? true) || e.category !== "deadline")),
       getNextUpcomingEvent: () => {
         if (!today) return null;  // server render: no clock
-        const now = nowKey();
+        const now = nowKey;
         return events.find((e) => e.category !== "deadline" && !e.cancelled && `${e.dateKey}T${e.endTime}` > now) ?? null;
       },
       getUpcomingDeadlines: () => {
         if (!today) return [];
-        const now = nowKey();
+        const now = nowKey;
         const seen = new Set<string>();
         return events.filter((e) => e.category === "deadline" && `${e.dateKey}T${e.startTime}` > now)
           .filter((e) => !seen.has(e.title) && Boolean(seen.add(e.title)));
@@ -278,7 +291,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       weekDays: (selectedKey) => (selectedKey ? weekStrip(selectedKey, events, today) : []),
       sources,
     };
-  }, [events, latestWeek, loadingCount, today, ensureWeek, reload]);
+  }, [events, latestWeek, loadingCount, today, nowKey, ensureWeek, reload]);
 
   // ---------- sheets ----------
   const openEventDetail = useCallback((event: ScheduleEvent) => setSelectedEvent(event), []);
@@ -323,7 +336,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (selectedEvent && actionLabel === selectedEvent.ctaLabel) return primaryAction(selectedEvent);
           closeEventDetail();
           showToast(selectedEvent?.sources.includes("Phoenix") ? "Nguồn: lịch Phoenix của bạn, cập nhật mỗi giờ."
-            : selectedEvent?.sources.includes("Nhóm") ? "Nguồn: lịch họp do nhóm bạn đặt trong app."
+            : selectedEvent?.sources.includes("Team") ? "Nguồn: lịch họp do team bạn đặt trong app."
               : "Nguồn: thời khoá biểu ban đào tạo gửi qua email.", "info");
         }}
       />

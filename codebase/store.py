@@ -71,11 +71,12 @@ CREATE TABLE IF NOT EXISTS team_meetings (id TEXT PRIMARY KEY, team TEXT NOT NUL
 # ignoring case (queries compare lower(username)).
 SCHEMA_PG = (SCHEMA.replace("id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE COLLATE NOCASE,",
                             "id SERIAL PRIMARY KEY, username TEXT NOT NULL,")
-             .replace("phoenix_synced_at TEXT);", "phoenix_synced_at TEXT, team TEXT, team_source TEXT);")
+             .replace("phoenix_synced_at TEXT);", "phoenix_synced_at TEXT, team TEXT, team_source TEXT, squad TEXT);")
              + "CREATE UNIQUE INDEX IF NOT EXISTS users_username_ci ON users (lower(username));\n"
              # databases created by an older version of this app
              + "ALTER TABLE students ADD COLUMN IF NOT EXISTS team TEXT;\n"
-             + "ALTER TABLE students ADD COLUMN IF NOT EXISTS team_source TEXT;\n")
+             + "ALTER TABLE students ADD COLUMN IF NOT EXISTS team_source TEXT;\n"
+             + "ALTER TABLE students ADD COLUMN IF NOT EXISTS squad TEXT;\n")
 TEAM_RE = re.compile(r"Nhóm\s*(\d+)", re.I)
 
 
@@ -90,18 +91,18 @@ def _migrate(con):
     with con:
         if "team" not in cols:
             con.execute("ALTER TABLE students ADD COLUMN team TEXT")
-        if "team_source" not in cols:  # 'student' = typed by the student (wins), 'phoenix' = guessed from the feed
+        if "squad" not in cols:  # the 4-person team (meetings); `team` is the mentor group ("Nhóm 18")
+            con.execute("ALTER TABLE students ADD COLUMN squad TEXT")
+        if "team_source" not in cols:  # 'phoenix' = read from the feed ('student' = typed, no longer allowed)
             con.execute("ALTER TABLE students ADD COLUMN team_source TEXT")
             for r in con.execute("SELECT DISTINCT student_id FROM phoenix_events").fetchall():
                 _set_team(con, r["student_id"])
+    _drop_typed_teams(con)
 
 
 def _set_team(con, student_id):
-    """Guess a student's team from their Phoenix mentor duties ('Nhóm 18' in most titles), unless the student set
-    it themselves. Teams are only assigned after the first week, so this may find nothing."""
-    st = con.execute("SELECT team_source FROM students WHERE id=?", (student_id,)).fetchone()
-    if not st or st["team_source"] == "student":
-        return
+    """A student's nhóm (mentor group) from their Phoenix mentor duties ('Nhóm 18' in most titles); students do not
+    type it. Nhóm are only assigned after the first week, so this may find nothing."""
     teams = [team_of(r["title"]) for r in con.execute(
         "SELECT title FROM phoenix_events WHERE student_id=? AND category='mentor_duty'", (student_id,))]
     teams = [t for t in teams if t]
@@ -110,21 +111,30 @@ def _set_team(con, student_id):
                     (max(set(teams), key=teams.count), student_id))
 
 
-def set_student_team(con, student_id: str, team) -> str:
-    """Team typed by the student ('18', 'Nhóm 18'). Empty clears it and falls back to the Phoenix guess.
-    Returns the team now in effect (or None)."""
-    raw = str(team or "").strip()
+SQUAD_RE = re.compile(r"^[\w .&+-]{2,40}$", re.U)
+
+
+def squad_key(name) -> str:
+    """Team names match ignoring case and extra spaces: "Code  Busters" == "code busters"."""
+    return " ".join(str(name or "").split()).lower()
+
+
+def set_student_squad(con, student_id: str, name) -> str:
+    """The student's 4-person team, by name (meetings are per team). Empty clears it. Returns the stored name."""
+    clean = " ".join(str(name or "").split())
+    if clean and not SQUAD_RE.match(clean):
+        raise ValueError("Mã team 2–40 ký tự, gồm chữ, số, khoảng trắng và . & + - _")
     with con:
-        if not raw:
-            con.execute("UPDATE students SET team=NULL, team_source=NULL WHERE id=?", (student_id,))
-            _set_team(con, student_id)
-        else:
-            digits = re.sub(r"\D", "", raw)
-            if not digits or len(digits) > 3:
-                raise ValueError("Số nhóm không hợp lệ.")
-            con.execute("UPDATE students SET team=?, team_source='student' WHERE id=?",
-                        ("Nhóm %d" % int(digits), student_id))
-    return con.execute("SELECT team FROM students WHERE id=?", (student_id,)).fetchone()["team"]
+        con.execute("UPDATE students SET squad=? WHERE id=?", (clean or None, student_id))
+    return clean or None
+
+
+def _drop_typed_teams(con):
+    """Nhóm used to be typeable; reset any typed one to what Phoenix says."""
+    for r in con.execute("SELECT id FROM students WHERE team_source='student'").fetchall():
+        with con:
+            con.execute("UPDATE students SET team=NULL, team_source=NULL WHERE id=?", (r["id"],))
+            _set_team(con, r["id"])
 
 
 def _setup_pg(con):
@@ -133,6 +143,7 @@ def _setup_pg(con):
                          "WHERE s.team IS NULL AND s.team_source IS NULL").fetchall():
         with con:
             _set_team(con, r["student_id"])
+    _drop_typed_teams(con)
 
 
 def _env(key: str) -> str:
@@ -295,17 +306,18 @@ def week(con, student_id: str, monday: str) -> dict:
                       "start": e["start"], "end": e["end"], "is_deadline": bool(e["is_deadline"]),
                       "location": e["location"], "url": e["url"]})
     items = apply_duty_changes(con, st["team"], items, days[0], days[-1])
-    items += team_meeting_items(con, st["team"], days[0], days[-1])
+    items += team_meeting_items(con, squad_key(st["squad"]), days[0], days[-1])
     items.sort(key=lambda x: x["start"])
     return {"student_id": student_id, "found": True, "class": st["class"], "team": st["team"], "days": days,
             "items": items, "clashes": clashes([i for i in items if not i.get("cancelled")])}
 
 
 def team_meeting_items(con, team, day_from, day_to):
-    """Team meetings as schedule items. Link and passcode are for teammates (the share view strips them)."""
+    """Meetings of a 4-person team (`team` = squad_key of the team name) as schedule items.
+    Link and passcode are for teammates (the share view strips them)."""
     if not team:
         return []
-    return [{"source": "team", "id": m["id"], "kind": "team_meeting", "title": m["title"] or "Họp nhóm",
+    return [{"source": "team", "id": m["id"], "kind": "team_meeting", "title": m["title"] or "Họp team",
              "start": m["start"], "end": m["end"], "is_deadline": False, "location": m["link"] or "",
              "url": m["link"] or "", "passcode": m["passcode"] or "", "note": m["note"] or "",
              "organizer": m["created_by"], "cancelled": bool(m["cancelled"])}

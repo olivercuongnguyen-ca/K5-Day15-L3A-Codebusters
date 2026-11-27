@@ -86,8 +86,6 @@ export function SettingsView() {
     logout,
   } = useApp();
   const [calLinks, setCalLinks] = useState<{ ics: string; google: string; outlook: string } | null>(null);
-  const [teamDraft, setTeamInput] = useState<string | null>(null);  // null = show the saved team
-  const teamInput = teamDraft ?? (student?.team ? student.team.replace(/\D/g, "") : "");
   useEffect(() => {
     if (!student) return;
     api<{ ics: string; google: string; outlook: string }>("/api/calendar-links").then(setCalLinks).catch(() => setCalLinks(null));
@@ -95,13 +93,16 @@ export function SettingsView() {
   const hydrated = useHydrated();
   const maskedIcsUrl = calLinks ? calLinks.ics.replace(/\/cal\/(.{6}).*(.{4})\.ics$/, "/cal/$1••••••$2.ics") : "Đang tạo liên kết…";
 
-  async function handleSaveTeam() {
+  const [squadDraft, setSquadDraft] = useState<string | null>(null);  // null = show the saved team name
+  const squadInput = squadDraft ?? (student?.squad ?? "");
+
+  async function handleSaveSquad() {
     try {
-      const me = await post<StudentMe>("/api/student/team", { team: teamInput.trim() }, "PUT");
+      const me = await post<StudentMe>("/api/student/squad", { squad: squadInput.trim() }, "PUT");
       setStudent({ ...student!, ...me });
-      setTeamInput(null);
+      setSquadDraft(null);
       schedule.reload();
-      showToast(me.team ? `Đã lưu: ${me.team}` : "Đã xoá số nhóm", "success");
+      showToast(me.squad ? `Đã lưu team: ${me.squad}` : "Đã xoá tên team", "success");
     } catch (err) {
       showToast((err as Error).message, "danger");
     }
@@ -226,30 +227,47 @@ export function SettingsView() {
 
       {student ? (
         <section
-          aria-label="Nhóm của bạn"
+          aria-label="Nhóm mentor"
           className="bg-surface border border-border rounded-[20px] md:rounded-[24px] p-4 md:p-5 shadow-card-sm flex flex-col gap-3"
         >
           <div className="flex flex-col gap-0.5">
             <h2 className="text-[15px] leading-[21px] md:text-[17px] md:leading-[24px] font-semibold text-text-primary">
-              Nhóm của bạn
+              Nhóm mentor
             </h2>
             <p className="text-[13px] leading-[19px] text-text-secondary">
               {student.team
-                ? `Bạn đang ở ${student.team}${student.team_set_by === "phoenix" ? " (lấy từ lịch Phoenix)" : ""}. Mentor duty và lịch họp nhóm theo nhóm này.`
-                : "Chưa có nhóm. Khi được chia nhóm, nhập số nhóm để thấy mentor duty và họp nhóm."}
+                ? `Bạn thuộc ${student.team} (lấy từ lịch Phoenix). Nhóm gồm nhiều team do một mentor phụ trách; lịch mentor duty theo nhóm này.`
+                : "Chưa biết nhóm mentor. App tự lấy từ lịch mentor duty trên Phoenix sau khi bạn kết nối Phoenix và được chia nhóm."}
+            </p>
+          </div>
+        </section>
+      ) : null}
+
+      {student ? (
+        <section
+          aria-label="Team của bạn"
+          className="bg-surface border border-border rounded-[20px] md:rounded-[24px] p-4 md:p-5 shadow-card-sm flex flex-col gap-3"
+        >
+          <div className="flex flex-col gap-0.5">
+            <h2 className="text-[15px] leading-[21px] md:text-[17px] md:leading-[24px] font-semibold text-text-primary">
+              Team của bạn
+            </h2>
+            <p className="text-[13px] leading-[19px] text-text-secondary">
+              {student.squad
+                ? `Bạn ở team ${student.squad}. Lịch họp team chỉ dành cho các bạn cùng tên team này.`
+                : "Chưa có team. Nhập mã team 4 người của bạn để đặt và xem lịch họp team."}
             </p>
           </div>
           <Input
-            label="Số nhóm"
+            label="Mã team"
             type="text"
-            inputMode="numeric"
-            tabularNums
-            value={teamInput}
-            onChange={(e) => setTeamInput(e.target.value)}
-            placeholder="Ví dụ: 18"
-            helperText="Để trống rồi lưu để xoá số nhóm."
+            maxLength={40}
+            value={squadInput}
+            onChange={(e) => setSquadDraft(e.target.value)}
+            placeholder="Ví dụ: T050"
+            helperText="Cả team nhập cùng một mã (không phân biệt hoa thường). Để trống rồi lưu để xoá."
             rightSlot={
-              <Button variant="primary" size="md" onClick={() => void handleSaveTeam()}>
+              <Button variant="primary" size="md" onClick={() => void handleSaveSquad()}>
                 Lưu
               </Button>
             }
@@ -392,7 +410,7 @@ export function SettingsView() {
               Mang lịch học vào Google Calendar
             </h2>
             <p className="text-[13px] leading-[19px] md:text-[14px] md:leading-[21px] text-text-secondary text-pretty">
-              Đăng ký liên kết lịch cá nhân để thấy lịch học, phòng, mentor duty, họp nhóm và
+              Đăng ký liên kết lịch cá nhân để thấy lịch học, phòng, mentor duty, họp team và
               hạn nộp ngay trong Google Calendar hoặc Outlook.
             </p>
           </div>

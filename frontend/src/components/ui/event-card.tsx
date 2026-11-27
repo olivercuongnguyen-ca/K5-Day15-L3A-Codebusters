@@ -40,7 +40,7 @@ const categoryBadgeConfig: Record<
   coaching: { label: "Workshop", variant: "primary" },
   officehour: { label: "Hỗ trợ / Lab", variant: "info" },
   duty: { label: "Mentor duty", variant: "info" },
-  meeting: { label: "Họp nhóm", variant: "primary" },
+  meeting: { label: "Họp team", variant: "primary" },
   deadline: { label: "Hạn nộp", variant: "warning" },
 };
 

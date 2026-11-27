@@ -37,7 +37,7 @@ def env(tmp_path, monkeypatch):
 
 def student(app, sid, team=""):
     c = TestClient(app)
-    r = c.post("/api/student/enter", json={"student_id": sid, "team": team})
+    r = c.post("/api/student/enter", json={"student_id": sid, "team": team})  # `team` is ignored now
     assert r.status_code == 200, r.text
     return c
 
@@ -72,17 +72,18 @@ def test_student_enters_with_id_only(env):
     assert s1.get("/api/week").status_code == 401
 
 
-def test_team_is_optional_and_editable(env):
+def test_nhom_comes_only_from_phoenix(env):
     con, app = env
-    s2 = student(app, "SV0002")  # first week: no team yet
-    assert s2.get("/api/student/me").json()["team"] is None
-    assert s2.put("/api/student/team", json={"team": "abc"}).status_code == 400
-    me = s2.put("/api/student/team", json={"team": "9"}).json()
-    assert me["team"] == "Nhóm 9" and me["team_set_by"] == "student"
-    s1 = student(app, "SV0001", team="Nhóm 12")  # a typed team beats the Phoenix guess and survives a refresh
-    store.ingest_phoenix(con, "SV0001", ics_feed.parse(ICS))
-    assert s1.get("/api/student/me").json()["team"] == "Nhóm 12"
-    assert s1.put("/api/student/team", json={"team": ""}).json()["team"] == "Nhóm 7"  # cleared -> back to guess
+    s2 = student(app, "SV0002", team="Nhóm 9")  # no Phoenix feed yet: no nhóm, and a typed one is ignored
+    me = s2.get("/api/student/me").json()
+    assert me["team"] is None and me["squad"] is None
+    assert s2.put("/api/student/team", json={"team": "9"}).status_code in (404, 405)  # no longer editable
+    me = s2.put("/api/student/squad", json={"squad": "T050"}).json()  # the 4-person team is typed
+    assert me["squad"] == "T050" and me["team"] is None
+    with con:  # a nhóm typed before this change is reset to what Phoenix says
+        con.execute("UPDATE students SET team='Nhóm 12', team_source='student' WHERE id='SV0001'")
+    store.connect()
+    assert student(app, "SV0001").get("/api/student/me").json()["team"] == "Nhóm 7"
 
 
 def test_login_errors_and_lockout(env):

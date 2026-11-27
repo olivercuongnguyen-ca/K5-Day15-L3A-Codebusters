@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { api, dm, hm, post, type MeetingSuggestion, type StudentMe } from "@/lib/backend";
 import { cn } from "@/lib/cn";
 import { Badge, Button, InfoIcon, Input, LockIcon, Sheet, VideoIcon } from "@/components/ui";
@@ -27,7 +26,7 @@ export function MeetingSheet({ open, onClose }: { open: boolean; onClose: () => 
   // the shown result belongs to one request (team + duration); anything else means "still loading"
   const [result, setResult] = useState<{ key: string; suggestions: MeetingSuggestion[]; error: string | null; team: string }>(
     { key: "", suggestions: [], error: null, team: "" });
-  const requestKey = `${student?.team ?? ""}|${duration}`;
+  const requestKey = `${student?.squad ?? ""}|${duration}`;
   const loaded = result.key === requestKey;
   const suggestions = loaded && !result.error ? result.suggestions : null;
   const sugError = loaded ? result.error : null;
@@ -56,8 +55,8 @@ export function MeetingSheet({ open, onClose }: { open: boolean; onClose: () => 
   }, []);
 
   useEffect(() => {
-    if (!open || !student?.team) return;
-    const key = `${student.team}|${duration}`;
+    if (!open || !student?.squad) return;
+    const key = `${student.squad}|${duration}`;
     api<{ team: string; members: number; suggestions: MeetingSuggestion[] }>(`/api/meetings/suggest?duration=${duration}`)
       .then((r) => {
         setResult({ key, suggestions: r.suggestions, error: null, team: `${r.team} · ${r.members} thành viên` });
@@ -65,9 +64,25 @@ export function MeetingSheet({ open, onClose }: { open: boolean; onClose: () => 
         if (r.suggestions.length) pick(r.suggestions[k], k);
       })
       .catch((err: Error) => setResult({ key, suggestions: [], error: err.message, team: "" }));
-  }, [open, duration, student?.team, pick]);
+  }, [open, duration, student?.squad, pick]);
 
   const needAuth = Boolean(student && (!student.signed_in || student.must_change));
+  const [squadDraft, setSquadDraft] = useState("");
+
+  async function saveSquad() {
+    if (!student) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      const me = await post<StudentMe>("/api/student/squad", { squad: squadDraft.trim() }, "PUT");
+      setStudent({ ...student, ...me });
+      schedule.reload();
+    } catch (err) {
+      setMessage({ tone: "error", text: (err as Error).message });
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function submit(force: boolean) {
     if (!student) return;
@@ -91,7 +106,7 @@ export function MeetingSheet({ open, onClose }: { open: boolean; onClose: () => 
         title: title.trim(), note: note.trim(), force,
       });
       schedule.reload();
-      showToast(`Đã đặt lịch họp ${r.team} lúc ${whenOf(r.start, r.end)} và báo cho cả nhóm.`, "success");
+      showToast(`Đã đặt lịch họp ${r.team} lúc ${whenOf(r.start, r.end)} và báo cho cả team.`, "success");
       setTitle(""); setLink(""); setPasscode(""); setNote(""); setNeedsForce(false);
       onClose();
     } catch (err) {
@@ -109,11 +124,11 @@ export function MeetingSheet({ open, onClose }: { open: boolean; onClose: () => 
       placement="drawer"
       size="md"
       onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}
-      title="Đặt lịch họp nhóm"
-      subtitle="Cả nhóm sẽ thấy lịch và nhận thông báo, không cần mật khẩu"
+      title="Đặt lịch họp team"
+      subtitle="Cả team sẽ thấy lịch và nhận thông báo, không cần mật khẩu"
       headerBadge={teamInfo ? <Badge variant="primary">{teamInfo}</Badge> : undefined}
       footer={
-        student?.team ? (
+        student?.squad ? (
           <div className="flex flex-col gap-2 w-full">
             {needsForce ? (
               <Button variant="outline" size="lg" fullWidth disabled={busy} onClick={() => void submit(true)}>
@@ -122,26 +137,42 @@ export function MeetingSheet({ open, onClose }: { open: boolean; onClose: () => 
             ) : null}
             <Button variant="primary" size="lg" fullWidth loading={busy} leftIcon={<VideoIcon size={17} />}
               onClick={() => void submit(false)}>
-              Đặt lịch và báo cho nhóm
+              Đặt lịch và báo cho team
             </Button>
           </div>
         ) : undefined
       }
     >
-      {!student?.team ? (
-        <div className="flex items-start gap-2.5 p-3.5 rounded-[16px] bg-warning-background text-on-warning">
-          <InfoIcon size={18} className="shrink-0 mt-0.5" />
-          <p className="text-[13px] leading-[19px]">
-            Bạn chưa có nhóm. Nhập số nhóm trong{" "}
-            <Link href="/settings" className="underline" onClick={onClose}>Cài đặt</Link> để đặt lịch họp nhóm.
-          </p>
+      {!student?.squad ? (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-start gap-2.5 p-3.5 rounded-[16px] bg-surface-subtle border border-border">
+            <InfoIcon size={18} className="shrink-0 mt-0.5 text-primary" />
+            <p className="text-[13px] leading-[19px] text-text-secondary">
+              Họp theo <strong className="text-text-primary">team 4 người</strong> của bạn (khác với nhóm mentor). Nhập mã
+              team, các bạn cùng team nhập đúng mã này để thấy lịch họp chung.
+            </p>
+          </div>
+          <Input
+            label="Mã team"
+            value={squadDraft}
+            maxLength={40}
+            placeholder="Ví dụ: T050"
+            onChange={(e) => setSquadDraft(e.target.value)}
+            rightSlot={
+              <Button variant="primary" size="md" disabled={busy || squadDraft.trim().length < 2}
+                onClick={() => void saveSquad()}>
+                Lưu
+              </Button>
+            }
+          />
+          {message ? <p role="status" className="text-[13px] text-danger">{message.text}</p> : null}
         </div>
       ) : (
         <div className="flex flex-col gap-4">
           <section className="flex flex-col gap-2.5" aria-labelledby="meet-sug-heading">
             <div className="flex items-center justify-between gap-2">
               <h3 id="meet-sug-heading" className="text-[14.5px] leading-[20px] font-semibold text-text-primary">
-                Giờ cả nhóm đều rảnh
+                Giờ cả team đều rảnh
               </h3>
               <select
                 aria-label="Thời lượng"
@@ -153,13 +184,13 @@ export function MeetingSheet({ open, onClose }: { open: boolean; onClose: () => 
               </select>
             </div>
             <p className="text-[12.5px] leading-[18px] text-text-secondary">
-              Không trùng buổi học hay mentor duty của bất kỳ ai trong nhóm. Workshop, office hour không tính là bận.
+              Không trùng buổi học hay mentor duty của bất kỳ ai trong team (mentor duty theo nhóm mentor của từng bạn). Workshop, office hour không tính là bận.
             </p>
             {sugError ? <p className="text-[13px] text-danger">{sugError}</p> : null}
             {!suggestions && !sugError ? <p className="text-[13px] text-text-secondary">Đang tìm giờ rảnh…</p> : null}
             {suggestions && suggestions.length === 0 ? (
               <p className="text-[13px] text-text-secondary">
-                7 ngày tới không có giờ nào cả nhóm cùng rảnh (08:00–22:00). Bạn vẫn có thể tự chọn giờ ở dưới.
+                7 ngày tới không có giờ nào cả team cùng rảnh (08:00–22:00). Bạn vẫn có thể tự chọn giờ ở dưới.
               </p>
             ) : null}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -178,7 +209,7 @@ export function MeetingSheet({ open, onClose }: { open: boolean; onClose: () => 
                 >
                   <span className="block text-[13.5px] font-semibold tabular-nums">{whenOf(g.start, g.end)}</span>
                   <span className="block text-[12px] text-text-secondary">
-                    {g.optional_overlaps.length ? `Trùng: ${g.optional_overlaps.join(", ")} (không bắt buộc)` : "Cả nhóm đều rảnh"}
+                    {g.optional_overlaps.length ? `Trùng: ${g.optional_overlaps.join(", ")} (không bắt buộc)` : "Cả team đều rảnh"}
                   </span>
                 </button>
               ))}
@@ -186,7 +217,7 @@ export function MeetingSheet({ open, onClose }: { open: boolean; onClose: () => 
           </section>
 
           <section className="flex flex-col gap-3" aria-label="Thông tin buổi họp">
-            <Input label="Tiêu đề (không bắt buộc)" value={title} maxLength={80} placeholder="Họp nhóm"
+            <Input label="Tiêu đề (không bắt buộc)" value={title} maxLength={80} placeholder="Họp team"
               onChange={(e) => setTitle(e.target.value)} />
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
               <div className="col-span-2 sm:col-span-1">
@@ -211,7 +242,7 @@ export function MeetingSheet({ open, onClose }: { open: boolean; onClose: () => 
                 <LockIcon size={15} className="shrink-0 mt-0.5 text-primary" />
                 {student?.has_password
                   ? "Để đặt lịch họp, đăng nhập bằng mật khẩu của bạn. Xem lịch vẫn chỉ cần mã học viên."
-                  : "Lần đầu đặt lịch họp: tạo mật khẩu cho mã học viên của bạn. Các bạn trong nhóm không cần mật khẩu để xem hay vào họp."}
+                  : "Lần đầu đặt lịch họp: tạo mật khẩu cho mã học viên của bạn. Các bạn trong team không cần mật khẩu để xem hay vào họp."}
               </p>
               <Input label={student?.has_password ? "Mật khẩu của bạn" : "Tạo mật khẩu (≥ 8 ký tự)"} type="password"
                 value={pw} autoComplete={student?.has_password ? "current-password" : "new-password"}
