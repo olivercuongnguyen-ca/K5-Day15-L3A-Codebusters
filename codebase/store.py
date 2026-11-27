@@ -71,12 +71,13 @@ CREATE TABLE IF NOT EXISTS team_meetings (id TEXT PRIMARY KEY, team TEXT NOT NUL
 # ignoring case (queries compare lower(username)).
 SCHEMA_PG = (SCHEMA.replace("id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE COLLATE NOCASE,",
                             "id SERIAL PRIMARY KEY, username TEXT NOT NULL,")
-             .replace("phoenix_synced_at TEXT);", "phoenix_synced_at TEXT, team TEXT, team_source TEXT, squad TEXT);")
+             .replace("phoenix_synced_at TEXT);", "phoenix_synced_at TEXT, team TEXT, team_source TEXT, squad TEXT, mentors TEXT);")
              + "CREATE UNIQUE INDEX IF NOT EXISTS users_username_ci ON users (lower(username));\n"
              # databases created by an older version of this app
              + "ALTER TABLE students ADD COLUMN IF NOT EXISTS team TEXT;\n"
              + "ALTER TABLE students ADD COLUMN IF NOT EXISTS team_source TEXT;\n"
-             + "ALTER TABLE students ADD COLUMN IF NOT EXISTS squad TEXT;\n")
+             + "ALTER TABLE students ADD COLUMN IF NOT EXISTS squad TEXT;\n"
+             + "ALTER TABLE students ADD COLUMN IF NOT EXISTS mentors TEXT;\n")
 TEAM_RE = re.compile(r"Nhóm\s*(\d+)", re.I)
 
 
@@ -93,6 +94,8 @@ def _migrate(con):
             con.execute("ALTER TABLE students ADD COLUMN team TEXT")
         if "squad" not in cols:  # the 4-person team (meetings); `team` is the mentor group ("Nhóm 18")
             con.execute("ALTER TABLE students ADD COLUMN squad TEXT")
+        if "mentors" not in cols:  # JSON list of the nhóm's mentors, from "Chủ trì:" in Phoenix duties
+            con.execute("ALTER TABLE students ADD COLUMN mentors TEXT")
         if "team_source" not in cols:  # 'phoenix' = read from the feed ('student' = typed, no longer allowed)
             con.execute("ALTER TABLE students ADD COLUMN team_source TEXT")
             for r in con.execute("SELECT DISTINCT student_id FROM phoenix_events").fetchall():
@@ -282,7 +285,31 @@ def ingest_phoenix(con, student_id: str, events: list) -> int:
         con.execute("UPDATE students SET phoenix_synced_at=? WHERE id=?",
                     (datetime.now(VN).isoformat(timespec="seconds"), student_id))
         _set_team(con, student_id)
+        _set_mentors(con, student_id, events)
     return len(events)
+
+
+HOST_RE = re.compile(r"^\s*Chủ trì\s*:\s*(.+?)\s*$", re.I | re.M)
+
+
+def _set_mentors(con, student_id, events):
+    """Mentors of the student's nhóm: the hosts ("Chủ trì: <name>") of its mentor duties, most frequent first."""
+    st = con.execute("SELECT team FROM students WHERE id=?", (student_id,)).fetchone()
+    names = []
+    for e in events:
+        if e["category"] == "mentor_duty" and st and st["team"] and team_of(e["title"]) == st["team"]:
+            names += [m.group(1) for m in HOST_RE.finditer(e.get("description") or "")]
+    ranked = sorted(set(names), key=lambda n: (-names.count(n), n))
+    con.execute("UPDATE students SET mentors=? WHERE id=?", (json.dumps(ranked, ensure_ascii=False) if ranked else None,
+                                                             student_id))
+
+
+def student_mentors(st) -> list:
+    """The `mentors` column as a list."""
+    try:
+        return json.loads(st["mentors"] or "[]")
+    except (KeyError, IndexError, ValueError):
+        return []
 
 
 def week(con, student_id: str, monday: str) -> dict:

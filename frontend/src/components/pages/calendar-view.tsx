@@ -8,7 +8,10 @@ import {
   Badge,
   Button,
   CalendarIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   EventCard,
+  IconButton,
   type EventCategory,
   Tabs,
 } from "@/components/ui";
@@ -88,6 +91,15 @@ export function CalendarView() {
   const selectedDayEvents = eventsByDateMap.get(selectedDateKey) ?? [];
   const hydrated = useHydrated();
 
+  /** Month view: previous / next month (today if it is in that month, else the 1st). Week view: ±7 days. */
+  function shift(step: -1 | 1) {
+    if (viewMode === "week") return setSelectedDateKey(addDays(selectedDateKey, 7 * step));
+    const [y, m] = monthKey.split("-").map(Number);
+    const d = new Date(y, m - 1 + step, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    setSelectedDateKey(TODAY_DATE_KEY.startsWith(key) ? TODAY_DATE_KEY : `${key}-01`);
+  }
+
   function handleJumpToday() {
     setSelectedDateKey(TODAY_DATE_KEY);
     showToast("Đã chuyển về hôm nay", "info");
@@ -108,9 +120,21 @@ export function CalendarView() {
           </span>
         </div>
 
-        <Button variant="secondary" size="sm" onClick={handleJumpToday}>
-          Hôm nay
-        </Button>
+        <div className="flex items-center gap-1.5">
+          <IconButton
+            aria-label={viewMode === "week" ? "Tuần trước" : "Tháng trước"}
+            icon={<ChevronLeftIcon size={18} />}
+            onClick={() => shift(-1)}
+          />
+          <Button variant="secondary" size="sm" onClick={handleJumpToday}>
+            Hôm nay
+          </Button>
+          <IconButton
+            aria-label={viewMode === "week" ? "Tuần sau" : "Tháng sau"}
+            icon={<ChevronRightIcon size={18} />}
+            onClick={() => shift(1)}
+          />
+        </div>
       </header>
 
       {/* Segmented Control: Tuần / Tháng */}

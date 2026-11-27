@@ -505,26 +505,6 @@ export function VinUniCampusMapSvg({
           </button>
         </div>
       </div>
-      <p className="px-1 text-[11px] sm:text-[12px] text-text-secondary">
-        Kéo để di chuyển · chụm hai ngón hoặc cuộn chuột để phóng to, thu nhỏ.
-      </p>
-
-      {/* Compact Legend */}
-      <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-[11px] sm:text-[12px] text-text-secondary">
-        <span className="inline-flex items-center gap-1.5">
-          <span
-            aria-hidden="true"
-            className="w-2.5 h-2.5 rounded-full bg-[#F59E0B] ring-2 ring-[#FFE566]"
-          />
-          {activeMeta
-            ? `Đang sáng: ${activeMeta.label}${roomCode ? ` · ${roomCode}` : ""}`
-            : "Tòa có ca học sẽ sáng nổi bật"}
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span aria-hidden="true" className="w-2.5 h-2.5 rounded-full bg-[#D8AB58]" />
-          Các tòa khác (gồm D & P)
-        </span>
-      </div>
     </div>
   );
 }

@@ -52,12 +52,12 @@ function LeaveRequestForm({
 }) {
   const { schedule } = useApp();
 
-  // class sessions from today on: the leave agent only handles timetable sessions
+  // class sessions that have not ended: the leave agent only handles timetable sessions
   const selectableEvents = useMemo(
     () => schedule.events.filter(
-      (evt) => evt.category === "session" && !evt.cancelled && evt.dateKey >= schedule.todayKey,
+      (evt) => evt.category === "session" && !evt.cancelled && evt.dateKey >= schedule.todayKey && !schedule.isPast(evt),
     ),
-    [schedule.events, schedule.todayKey],
+    [schedule],
   );
 
   const defaultEventId =
@@ -67,7 +67,8 @@ function LeaveRequestForm({
 
   const [selectedEventId, setSelectedEventId] = useState(defaultEventId);
   const [recipientEmail, setRecipientEmail] = useState("");
-  const [aiMessage, setAiMessage] = useState<{ tone: "info" | "error"; text: string } | null>(null);
+  const [aiMessage, setAiMessage] = useState<{ tone: "info" | "error"; text: string; tips?: string[] } | null>(null);
+  const [tips, setTips] = useState<string[]>([]);
   const [basedOn, setBasedOn] = useState<string[]>([]);
   const [reason, setReason] = useState("");
   const [hasEvidence, setHasEvidence] = useState(false);
@@ -80,6 +81,12 @@ function LeaveRequestForm({
   const [draftBody, setDraftBody] = useState("");
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const aiMessageRef = useRef<HTMLDivElement | null>(null);
+
+  // the AI's question or refusal must be seen: bring it into view whenever it changes
+  useEffect(() => {
+    if (aiMessage) aiMessageRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [aiMessage]);
 
   useEffect(() => {
     return () => {
@@ -114,10 +121,12 @@ function LeaveRequestForm({
         setDraftBody(r.email.body);
         setRecipientEmail(r.email.to);
         setBasedOn(r.based_on);
+        setTips(r.tips ?? []);
         setStep("preview");
       } else {
         // the agent asks one question or refuses: show it and let the student fix the form
-        setAiMessage({ tone: r.status === "refuse" ? "error" : "info", text: r.question || "AI chưa soạn được thư." });
+        setAiMessage({ tone: r.status === "refuse" ? "error" : "info", text: r.question || "AI chưa soạn được thư.",
+          tips: r.tips });
       }
     } catch (err) {
       setAiMessage({ tone: "error", text: (err as Error).message });
@@ -169,14 +178,10 @@ function LeaveRequestForm({
       }}
       title={
         step === "compose"
-          ? "Xin phép nghỉ học bằng AI"
+          ? "Xin nghỉ học nhanh"
           : "Xem trước thư xin nghỉ"
       }
-      subtitle={
-        step === "compose"
-          ? "Điền nhanh thông tin buổi học, lý do và minh chứng để AI chuẩn bị sẵn thư gửi Outlook"
-          : "Rà soát hoặc chỉnh sửa câu chữ lần cuối trước khi mở trên Outlook"
-      }
+      subtitle={step === "compose" ? undefined : "Sửa nếu cần rồi mở Outlook để gửi"}
       headerBadge={
         step === "compose" ? (
           <Badge variant="secondary">Bước 1/2 · Nhập thông tin</Badge>
@@ -206,7 +211,7 @@ function LeaveRequestForm({
               onClick={handleGenerateDraft}
               className="sm:min-w-[210px]"
             >
-              {isGenerating ? "Đang tạo bản nháp..." : "Tạo bản nháp bằng AI"}
+              {isGenerating ? "AI đang soạn thư…" : "Tạo bản nháp bằng AI"}
             </Button>
           </div>
         ) : (
@@ -248,6 +253,32 @@ function LeaveRequestForm({
       }
     >
       {step === "compose" ? (
+        <div className="flex flex-col gap-4">
+        {aiMessage ? (
+          <div
+            ref={aiMessageRef}
+            role="alert"
+            className={cn(
+              "flex items-start gap-2.5 text-[13.5px] leading-[20px] rounded-[16px] px-4 py-3",
+              aiMessage.tone === "error"
+                ? "bg-danger-background text-on-danger-background"
+                : "bg-warning-background text-on-warning",
+            )}
+          >
+            <InfoIcon size={18} className="shrink-0 mt-0.5" />
+            <div>
+              <strong className="font-semibold">
+                {aiMessage.tone === "error" ? "AI chưa soạn được thư: " : "AI cần thêm thông tin: "}
+              </strong>
+              {aiMessage.text}
+              {aiMessage.tips?.length ? (
+                <ul className="mt-1.5 list-disc pl-4 flex flex-col gap-0.5">
+                  {aiMessage.tips.map((t) => <li key={t}>{t}</li>)}
+                </ul>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 items-start">
           {/* Left Column: Session, Recipient & Evidence */}
           <div className="md:col-span-5 flex flex-col gap-4 p-4 rounded-[18px] bg-background/85 border border-border/80">
@@ -273,25 +304,10 @@ function LeaveRequestForm({
               </select>
             </div>
 
-            <p className="flex items-start gap-2 text-[12.5px] leading-[18px] text-text-secondary">
-              <MailIcon size={15} className="shrink-0 mt-0.5" />
-              <span>Thư gửi tới ban đào tạo (địa chỉ do app cấu hình sẵn). AI chỉ soạn nháp; bạn tự kiểm tra, đính kèm minh chứng và bấm Gửi trong Outlook.</span>
-            </p>
             {selectableEvents.length === 0 ? (
               <p className="text-[12.5px] text-on-warning bg-warning-background rounded-[12px] px-3 py-2">
                 Không còn buổi học nào sắp tới trong lịch đã tải.
               </p>
-            ) : null}
-            {aiMessage ? (
-              <div
-                role="status"
-                className={cn(
-                  "text-[13px] leading-[19px] rounded-[14px] px-3.5 py-2.5",
-                  aiMessage.tone === "error" ? "bg-danger-background text-on-danger-background" : "bg-surface-subtle text-text-primary border border-border",
-                )}
-              >
-                <strong className="font-semibold">AI: </strong>{aiMessage.text}
-              </div>
             ) : null}
 
             {/* Evidence toggle */}
@@ -373,6 +389,7 @@ function LeaveRequestForm({
               <textarea
                 id="leave-reason-input"
                 rows={5}
+                maxLength={1000}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 placeholder="Nhập chi tiết lý do xin nghỉ học của bạn (ví dụ: Em bị sốt cao từ tối qua và có lịch khám bác sĩ sáng nay nên không thể tham dự buổi học đúng giờ)..."
@@ -387,7 +404,7 @@ function LeaveRequestForm({
               />
               {reasonMissing ? (
                 <p className="text-[12px] md:text-[13px] text-on-danger-background">
-                  Vui lòng nhập lý do xin nghỉ để AI tạo bản nháp phù hợp.
+                  Vui lòng nhập lý do xin nghỉ.
                 </p>
               ) : null}
 
@@ -407,15 +424,8 @@ function LeaveRequestForm({
                 ))}
               </div>
             </div>
-
-            <div className="flex items-start gap-2.5 p-3.5 rounded-[14px] bg-surface-subtle/75 border border-border text-text-secondary">
-              <InfoIcon size={17} className="text-secondary shrink-0 mt-0.5" />
-              <p className="text-[12.5px] leading-[19px]">
-                AI chỉ tạo bản nháp dựa trên thông tin buổi học và lý do bạn
-                nhập để bạn xem trước. Hệ thống không tự ý gửi thư thay bạn.
-              </p>
-            </div>
           </div>
+        </div>
         </div>
       ) : (
         <div className="flex flex-col gap-4">
@@ -455,6 +465,19 @@ function LeaveRequestForm({
             />
           </div>
 
+          {tips.length ? (
+            <div className="flex items-start gap-2.5 p-3.5 rounded-[14px] bg-surface-subtle border border-border">
+              <InfoIcon size={17} className="shrink-0 mt-0.5 text-secondary" />
+              <div className="text-[12.5px] md:text-[13px] leading-[19px] text-text-primary">
+                <strong className="font-semibold">Gợi ý để được duyệt nhanh hơn</strong>
+                <ul className="mt-1 list-disc pl-4 text-text-secondary">
+                  {tips.map((t) => <li key={t}>{t}</li>)}
+                </ul>
+                <button type="button" onClick={() => setStep("compose")}
+                  className="mt-1.5 text-secondary underline cursor-pointer">Bổ sung vào lý do</button>
+              </div>
+            </div>
+          ) : null}
           {basedOn.length ? (
             <p className="text-[12.5px] leading-[18px] text-text-secondary">
               Dựa trên lịch: <span className="tabular-nums text-text-primary">{basedOn.join(" · ")}</span>
