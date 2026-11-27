@@ -215,3 +215,4 @@ textarea{resize:vertical}
   .weekview .ev .t{grid-row:auto}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+.formh{margin:0;font-size:20px}
