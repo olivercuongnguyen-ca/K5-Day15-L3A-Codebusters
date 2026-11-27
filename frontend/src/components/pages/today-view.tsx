@@ -108,7 +108,7 @@ export function TodayView() {
               leftIcon={<VideoIcon size={15} />}
               onClick={openMeetingSheet}
             >
-              Họp team
+              Tạo lịch họp team
             </Button>
           ) : null}
           <Button
@@ -117,7 +117,7 @@ export function TodayView() {
             leftIcon={<MailIcon size={15} />}
             onClick={() => openLeaveRequest(nextEvent?.category === "session" ? nextEvent : undefined)}
           >
-            Xin nghỉ AI
+            Xin nghỉ buổi học
           </Button>
           <IconButton
             aria-label="Xem thông báo đổi lịch"

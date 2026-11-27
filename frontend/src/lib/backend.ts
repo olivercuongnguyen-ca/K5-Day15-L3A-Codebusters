@@ -64,6 +64,8 @@ export interface StudentMe {
   team: string | null;
   /** Team: the 4-person team name; who meets in team meetings. */
   squad: string | null;
+  /** Mentors of the nhóm, from "Chủ trì:" in the student's Phoenix mentor duties. */
+  mentors: string[];
   team_set_by: string | null;
   short_name: string | null;
   has_password: boolean;
@@ -84,6 +86,8 @@ export interface LeaveResult {
   status: "ready" | "need_info" | "refuse" | "error";
   sessions: string[];
   question: string;
+  /** Up to 3 AI suggestions for a faster approval (never part of the email). */
+  tips?: string[];
   email: { to: string; subject: string; body: string } | null;
   links: { outlook_web: string; mailto: string } | null;
   based_on: string[];

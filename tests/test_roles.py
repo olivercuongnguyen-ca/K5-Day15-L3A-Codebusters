@@ -83,7 +83,8 @@ def test_nhom_comes_only_from_phoenix(env):
     with con:  # a nhóm typed before this change is reset to what Phoenix says
         con.execute("UPDATE students SET team='Nhóm 12', team_source='student' WHERE id='SV0001'")
     store.connect()
-    assert student(app, "SV0001").get("/api/student/me").json()["team"] == "Nhóm 7"
+    me = student(app, "SV0001").get("/api/student/me").json()
+    assert me["team"] == "Nhóm 7" and me["mentors"] == ["Mentor, A"]  # host of the nhóm's duties ("Chủ trì:")
 
 
 def test_login_errors_and_lockout(env):
@@ -183,3 +184,13 @@ def test_first_timetable_upload_needs_no_sign_in_only_once(tmp_path, monkeypatch
     assert c.get("/api/setup/status").json()["timetable"] is True
     assert c.post("/api/setup/timetable", files=files).status_code == 403  # later updates: admin only
     assert c.post("/api/admin/ingest", files=files).status_code == 401
+
+
+def test_phoenix_sync_now(env, monkeypatch):
+    con, app = env
+    s2 = student(app, "SV0002")
+    assert s2.post("/api/phoenix/sync").status_code == 400  # no feed linked yet
+    store.set_phoenix_feed(con, "SV0002", "https://phoenix.note.transformerlabs.ai/api/events/feed/x.ics")
+    monkeypatch.setattr(ics_feed, "fetch", lambda url: ICS)
+    r = s2.post("/api/phoenix/sync").json()
+    assert r["events"] == 2 and r["student"]["team"] == "Nhóm 7" and r["student"]["mentors"] == ["Mentor, A"]

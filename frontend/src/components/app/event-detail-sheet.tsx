@@ -109,7 +109,7 @@ export function EventDetailSheet({
                 leftIcon={<MailIcon size={18} />}
                 onClick={() => onRequestLeave(event)}
               >
-                Xin nghỉ buổi này bằng AI
+                Xin nghỉ buổi này
               </Button>
             ) : null}
           </div>

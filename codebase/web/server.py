@@ -10,6 +10,7 @@ student ID (and optionally their team name; the nhóm comes from Phoenix), which
              POST /api/student/password {old, new}
              POST /api/student/enter {student_id, squad?, phoenix_url?} · GET /api/student/me
              (nhóm = mentor group, for mentor duty: read from the student's Phoenix feed, never typed)
+             POST /api/phoenix/sync (fetch the saved feed now)
              PUT /api/student/squad {squad} (team = 4 people, for team meetings)
              POST /api/student/exit · GET /api/week?monday · POST /api/phoenix {url}
              POST /api/leave · POST /api/push/subscribe · POST /api/push/test · GET /api/calendar-links · GET /api/share
@@ -35,7 +36,7 @@ sys.path.insert(0, os.path.join(ROOT, "codebase"))
 from fastapi import Depends, FastAPI, File, HTTPException, Request, Response as FResponse, UploadFile  # noqa: E402
 from fastapi.responses import FileResponse, JSONResponse, Response  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
-from pydantic import BaseModel  # noqa: E402
+from pydantic import BaseModel, Field  # noqa: E402
 
 import admin as admin_ops  # noqa: E402
 import auth  # noqa: E402
@@ -186,9 +187,11 @@ class StudentIn(BaseModel):
 
 
 def _student_info(con, sid, request: Request = None):
-    st = con.execute("SELECT id, class, team, team_source, squad, short_name FROM students WHERE id=?", (sid,)).fetchone()
+    st = con.execute("SELECT id, class, team, team_source, squad, mentors, short_name FROM students WHERE id=?",
+                     (sid,)).fetchone()
     signed = auth.student_for_token(con, request.cookies.get(STUDENT_AUTH)) if request else None
     return {"student_id": st["id"], "class": st["class"], "team": st["team"], "squad": st["squad"],
+            "mentors": store.student_mentors(st),
             "short_name": st["short_name"],
             "team_set_by": st["team_source"], "has_password": auth.student_has_password(con, sid),
             "signed_in": bool(signed and signed[0] == sid), "must_change": bool(signed and signed[1])}
@@ -347,6 +350,21 @@ def phoenix(body: PhoenixIn, user=Depends(student_only)):
     return {"events": _link_phoenix(store.connect(), user["student_id"], body.url)}
 
 
+@app.post("/api/phoenix/sync")
+def phoenix_sync(request: Request, user=Depends(student_only)):
+    """Fetch the student's saved Phoenix feed now instead of waiting for the hourly refresh."""
+    con = store.connect()
+    sid = user["student_id"]
+    st = con.execute("SELECT phoenix_url FROM students WHERE id=?", (sid,)).fetchone()
+    if not st or not st["phoenix_url"]:
+        raise HTTPException(400, "Bạn chưa kết nối lịch Phoenix.")
+    try:
+        events = ics_feed.parse(ics_feed.fetch(st["phoenix_url"]))
+    except Exception:
+        raise HTTPException(502, "Không tải được lịch Phoenix. Thử lại sau.")
+    return {"events": store.ingest_phoenix(con, sid, events), "student": _student_info(con, sid, request)}
+
+
 def _link_phoenix(con, sid, url):
     try:
         events = ics_feed.parse(ics_feed.fetch(url.strip()))
@@ -410,9 +428,9 @@ async def setup_timetable(file: UploadFile = File(...)):
 
 
 class LeaveIn(BaseModel):
-    session: str
-    reason: str
-    evidence_type: str = ""
+    session: str = Field(max_length=200)
+    reason: str = Field(max_length=1000)
+    evidence_type: str = Field("", max_length=200)
 
 
 @app.post("/api/leave")

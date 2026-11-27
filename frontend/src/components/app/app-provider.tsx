@@ -331,7 +331,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       <EventDetailSheet
         event={selectedEvent}
         onClose={closeEventDetail}
-        onRequestLeave={openLeaveRequest}
+        // leave can only be requested for a lesson that has not ended yet
+        onRequestLeave={selectedEvent && !selectedEvent.cancelled
+          && `${selectedEvent.dateKey}T${selectedEvent.endTime}` > nowKey ? openLeaveRequest : undefined}
         onDemoAction={(actionLabel) => {
           if (selectedEvent && actionLabel === selectedEvent.ctaLabel) return primaryAction(selectedEvent);
           closeEventDetail();

@@ -96,6 +96,25 @@ export function SettingsView() {
   const [squadDraft, setSquadDraft] = useState<string | null>(null);  // null = show the saved team name
   const squadInput = squadDraft ?? (student?.squad ?? "");
 
+  async function handleSyncAll() {
+    showToast("Đang đồng bộ…", "info");
+    try {
+      if (student) {
+        // fetch Phoenix now (not linked = 400: just reload the timetable)
+        const r = await post<{ events: number; student: StudentMe }>("/api/phoenix/sync", {}).catch((err) => {
+          if ((err as { status?: number }).status === 400) return null;
+          throw err;
+        });
+        if (r) setStudent({ ...student, ...r.student });
+      }
+      schedule.reload();
+      showToast("Đã đồng bộ lịch", "success");
+    } catch (err) {
+      schedule.reload();
+      showToast((err as Error).message, "danger");
+    }
+  }
+
   async function handleSaveSquad() {
     try {
       const me = await post<StudentMe>("/api/student/squad", { squad: squadInput.trim() }, "PUT");
@@ -236,7 +255,7 @@ export function SettingsView() {
             </h2>
             <p className="text-[13px] leading-[19px] text-text-secondary">
               {student.team
-                ? `Bạn thuộc ${student.team} (lấy từ lịch Phoenix). Nhóm gồm nhiều team do một mentor phụ trách; lịch mentor duty theo nhóm này.`
+                ? `Bạn thuộc ${student.team}. Nhóm gồm nhiều team do ${student.mentors?.length ? `mentor ${student.mentors.join(" và ")}` : "một mentor"} phụ trách; lịch mentor duty theo nhóm này.`
                 : "Chưa biết nhóm mentor. App tự lấy từ lịch mentor duty trên Phoenix sau khi bạn kết nối Phoenix và được chia nhóm."}
             </p>
           </div>
@@ -252,11 +271,11 @@ export function SettingsView() {
             <h2 className="text-[15px] leading-[21px] md:text-[17px] md:leading-[24px] font-semibold text-text-primary">
               Team của bạn
             </h2>
-            <p className="text-[13px] leading-[19px] text-text-secondary">
-              {student.squad
-                ? `Bạn ở team ${student.squad}. Lịch họp team chỉ dành cho các bạn cùng tên team này.`
-                : "Chưa có team. Nhập mã team 4 người của bạn để đặt và xem lịch họp team."}
-            </p>
+            {student.squad ? null : (
+              <p className="text-[13px] leading-[19px] text-text-secondary">
+                Chưa có team. Nhập mã team 4 người của bạn để đặt và xem lịch họp team.
+              </p>
+            )}
           </div>
           <Input
             label="Mã team"
@@ -265,7 +284,7 @@ export function SettingsView() {
             value={squadInput}
             onChange={(e) => setSquadDraft(e.target.value)}
             placeholder="Ví dụ: T050"
-            helperText="Cả team nhập cùng một mã (không phân biệt hoa thường). Để trống rồi lưu để xoá."
+            helperText="Cả team nhập cùng một mã."
             rightSlot={
               <Button variant="primary" size="md" onClick={() => void handleSaveSquad()}>
                 Lưu
@@ -315,10 +334,7 @@ export function SettingsView() {
             variant="outline"
             size="sm"
             leftIcon={<RefreshIcon size={15} />}
-            onClick={() => {
-              schedule.reload();
-              showToast("Đang tải lại lịch…", "info");
-            }}
+            onClick={() => void handleSyncAll()}
           >
             Đồng bộ tất cả
           </Button>
