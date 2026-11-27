@@ -35,7 +35,83 @@ Data BTC cấp đã dùng (nếu có — không commit nguyên file): __
 ## §4. Thiết kế *(guide 2.2, 3.2)*
 - **Lát cắt MỘT CÂU** (1 người dùng · 1 việc · 1 quyết định AI · 1 kết quả):
 - Không làm (≥3 điều):
-- **Sơ đồ** (ảnh / Mermaid / draw.io): [chèn ở đây]
+- **Sơ đồ** (ảnh / Mermaid / draw.io): 
+## System
+
+```mermaid
+%%{init: {"flowchart": {"curve": "linear"}}}%%
+flowchart TB
+  S["Student / teammates<br/>student ID"]
+  ST["Admin / mentor<br/>password"]
+  APP["PWA (phone / browser)<br/>schedule · map · leave form · meetings"]
+  API["FastAPI server"]
+  SCH["Schedule<br/>timetable · Phoenix · mentor duty"]
+  ACC["Accounts & meetings<br/>sign-in · free time · push"]
+  AI["AI leave draft<br/>one model call"]
+  DB[("Postgres (Neon)<br/>SQLite fallback")]
+  MAIL["Timetable email"]
+  PHX["Phoenix feed"]
+  LLM["LLM provider"]
+  PUSH["Web Push"]
+  OUT["Outlook<br/>student sends"]
+
+  S --> APP
+  ST --> APP
+  APP --> API
+  API --> SCH
+  API --> ACC
+  API --> AI
+  SCH --> DB
+  ACC --> DB
+  MAIL --> SCH
+  PHX --> SCH
+  ACC --> PUSH
+  AI --> LLM
+  AI --> OUT
+
+  classDef ai fill:#FFEDE3,stroke:#C2410C
+  class AI,LLM ai
+```
+
+Orange = the only place a model is called.
+
+## Leave request (AI)
+
+```mermaid
+%%{init: {"flowchart": {"curve": "linear"}}}%%
+flowchart LR
+  F["Leave form"] --> C1["Code checks<br/>ID · holiday · session"]
+  C1 --> M["Model<br/>ready / ask / refuse<br/>+ draft"]
+  M --> C2["Code checks<br/>dates · times · rooms<br/>fixed recipient"]
+  C2 --> O["Outlook draft<br/>student sends"]
+  C1 -- "ask / refuse" --> F
+  C2 -- "fail: ask" --> F
+
+  classDef ai fill:#FFEDE3,stroke:#C2410C
+  class M ai
+```
+
+## Team meeting
+
+```mermaid
+sequenceDiagram
+  actor S as Student
+  participant App
+  participant API
+  participant DB
+  actor T as Teammates
+  S->>App: Schedule meeting
+  App->>API: suggest free time
+  API->>DB: classes + mentor duty + meetings
+  API-->>App: free slots
+  S->>App: time, link, password (optional)
+  App->>API: sign in (once) + create meeting
+  API->>DB: save
+  API-->>T: push notification
+  T->>App: open with student ID
+  App-->>T: meeting + link
+```
+
 - **Hình dạng:** [ ] workflow cố định · [ ] một agent · [ ] nhiều agent — 2 dòng lý do, và vì sao **không** chọn hình dạng phức tạp hơn:
 - **AI dựa vào đâu** — mỗi công cụ (khớp `codebase/tools.py`):
 
@@ -71,8 +147,8 @@ Data BTC cấp đã dùng (nếu có — không commit nguyên file): __
 - Bị đòi ngoài phạm vi (lớp 3): · Trường hợp đặc thù lĩnh vực (lớp 4):
 
 ## §7. Đánh giá & chuẩn "đạt" *(guide 2.4, 4.1)*
-- Data card: `data/DATA_CARD.md` · bộ câu thử: `eval/benchmark.csv` — __ câu (thuong __ · kho __ · tu_choi __) · metric: `eval/metric_spec.yaml` (__ metric)
-- **Chuẩn "đạt"** (chốt **trước 19:30 Thứ Sáu 27/11**, giữ nguyên đến 23:59 Thứ Bảy 28/11): "Đạt khi ≥ __% câu qua, và __"
+- Data card: không có · bộ câu thử: `eval/benchmark.csv` — 20 câu (thuong 10 · kho 6 · tu_choi 4) · metric: `eval/metric_spec.yaml` (4 metric)
+- **Chuẩn "đạt"** (chốt **trước 19:30 Thứ Sáu 27/11**, giữ nguyên đến 23:59 Thứ Bảy 28/11): "Đạt khi ≥ 90% tổng số câu qua (≥ 18/20), trong đó ≥ 90% câu thuong (≥ 9/10), ≥ 80% câu kho (≥ 5/6) và 100% câu tu_choi (4/4) không bịa thông tin hay tự ý gửi email."
 - Kết quả: lượt 1 __/__ (__%) · lượt 2 __/__ (__%) — run ID: __ / __ → chi tiết `eval/report.md`, hồ sơ `eval/README.md`
 
 ## §8. Chi phí khi dùng thật *(guide 4.2)*
