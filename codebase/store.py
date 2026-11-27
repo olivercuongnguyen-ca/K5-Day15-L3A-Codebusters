@@ -1,5 +1,11 @@
-"""The app's own database. Postgres when DATABASE_URL is set (shared, e.g. Neon); otherwise SQLite at
-data/private/app.db (gitignored) or APP_DB. Tests always pass an explicit SQLite path. See codebase/db.py.
+"""The app's own database.
+
+Backends
+    SQLite (default, stdlib)   data/private/app.db — gitignored, never committed. Used by tests, eval and fake mode.
+    Postgres (e.g. Neon)       set DATABASE_URL=postgresql://… in .env (needs `psycopg`). An explicit path or APP_DB
+                               always wins, so fixture DBs for eval/tests stay on SQLite.
+Callers use one API for both (codebase/db.py): con.execute / executemany / executescript, `with con:` = one
+transaction, rows readable by column name. SQL is written once with `?` placeholders and portable syntax.
 
 Tables
     tkb_versions     one row per distinct timetable attachment received (hash, received_at, source)
@@ -129,15 +135,34 @@ def _setup_pg(con):
             _set_team(con, r["student_id"])
 
 
+def _env(key: str) -> str:
+    """One setting from the environment, else from .env (store can be imported before ai.load_env runs)."""
+    if key in os.environ:
+        return os.environ[key].strip()
+    path = os.path.join(ROOT, ".env")
+    if os.path.exists(path):
+        with open(path, encoding="utf-8-sig") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith(key + "="):
+                    return line.split("=", 1)[1].strip().strip('"').strip("'")
+    return ""
+
+
 def connect(path=None):
-    """An explicit path is always SQLite (tests, scripts). Otherwise Postgres if DATABASE_URL is set, else SQLite."""
-    url = None if path else db.database_url()
-    if url:
+    """SQLite unless DATABASE_URL points at Postgres. An explicit path or APP_DB forces SQLite (fixtures)."""
+    url = "" if (path or os.environ.get("APP_DB")) else db.database_url()
+    if url.startswith(("postgres://", "postgresql://")):
         return db.postgres(url, on_new=_setup_pg)
     con = db.sqlite(path or DB_PATH)
     con.executescript(SCHEMA)
     _migrate(con)
     return con
+
+
+# ---- Postgres (Neon): the connection class lives in codebase/db.py; these names are kept for scripts and tests ----
+PgConnection = db.PgConnection
+_pg_sql = db.PgConnection._sql
 
 
 def token_for(con, student_id: str, kind: str) -> str:
@@ -259,13 +284,13 @@ def week(con, student_id: str, monday: str) -> dict:
     items = []
     for s in con.execute("SELECT s.*, r.room AS my_room FROM sessions s LEFT JOIN student_rooms r "
                          "ON r.session_id=s.id AND r.student_id=? WHERE s.class=? AND s.date BETWEEN ? AND ? "
-                         "ORDER BY s.date, s.start", (student_id, st["class"], days[0], days[-1])):
+                         "ORDER BY s.date, s.start, s.id", (student_id, st["class"], days[0], days[-1])):
         items.append({"source": "tkb", "id": s["id"], "kind": s["kind"], "title": s["name"],
                       "start": "%sT%s:00+07:00" % (s["date"], s["start"]),
                       "end": "%sT%s:00+07:00" % (s["date"], s["end"]),
                       "my_room": s["my_room"], "class_rooms": json.loads(s["rooms"])})
     for e in con.execute("SELECT * FROM phoenix_events WHERE student_id=? AND substr(start,1,10) BETWEEN ? AND ? "
-                         "ORDER BY start", (student_id, days[0], days[-1])):
+                         "ORDER BY start, uid", (student_id, days[0], days[-1])):
         items.append({"source": "phoenix", "id": e["uid"], "kind": e["category"], "title": e["title"],
                       "start": e["start"], "end": e["end"], "is_deadline": bool(e["is_deadline"]),
                       "location": e["location"], "url": e["url"]})

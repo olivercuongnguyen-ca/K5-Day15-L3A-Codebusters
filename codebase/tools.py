@@ -29,7 +29,7 @@ def _sessions(con, student_id):
     if not st or not st["class"]:
         return None, []
     rows = con.execute("SELECT s.*, r.room AS my_room FROM sessions s LEFT JOIN student_rooms r ON r.session_id=s.id "
-                       "AND r.student_id=? WHERE s.class=? ORDER BY s.date, s.start", (student_id, st["class"]))
+                       "AND r.student_id=? WHERE s.class=? ORDER BY s.date, s.start, s.id",(student_id, st["class"]))
     out = []
     for s in rows:
         out.append({"id": s["id"], "name": s["name"], "kind": s["kind"], "date": s["date"], "slot": s["slot"],
