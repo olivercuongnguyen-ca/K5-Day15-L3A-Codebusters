@@ -5,15 +5,16 @@
 > Kiểm bằng `python run.py check`: phần "Kiểm TEAMS.md" không báo gì là đúng format.
 
 - Tên nhóm: Codebusters
-- Lớp: ____
+- Lớp: L3A
 - Track: A
-- Link repo: ____
+- Link repo: https://github.com/olivercuongnguyen-ca/K5-Day15-L3A-Codebusters
 
 | STT | Họ và tên | Mã học viên | Vai trò | Phần việc chính |
 |---|---|---|---|---|
-| 1 | ____ | ____ | Đội trưởng | ____ |
-| 2 | ____ | ____ | Thành viên | ____ |
-| 3 | ____ | ____ | Thành viên | ____ |
+| 1 | Nguyễn Hoàng Cương | 2A202603568 | Đội trưởng | Backend , Techlead |
+| 2 | Bùi Đăng Quang | 2A202603640 | Thành viên | Frontend, Devops |
+| 3 | Đinh Trần Nguyên | 2A202603517 | Thành viên | Docs , Pitcher  |
+| 4 | Thân Đức Trung | 2A202603449 | Thành viên | Feature Dev, Devops |
 
 **Quy tắc điền**
 - **Lớp:** `L3A` hoặc `L3B`. **Track:** một chữ `A` (EdTech), `B` (Y tế), `C` (Du lịch), `D` (Thương mại điện tử), `E` (Tài chính) hoặc `F` (Làn khác). **Link repo:** link GitHub công khai của nhóm.
