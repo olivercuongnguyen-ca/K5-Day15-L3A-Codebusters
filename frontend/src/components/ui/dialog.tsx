@@ -30,6 +30,11 @@ export function Dialog({
   const descriptionId = useId();
   const panelRef = useRef<HTMLDivElement | null>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const onOpenChangeRef = useRef(onOpenChange);
+
+  useEffect(() => {
+    onOpenChangeRef.current = onOpenChange;
+  }, [onOpenChange]);
 
   useEffect(() => {
     if (!open) return;
@@ -39,16 +44,18 @@ export function Dialog({
     document.body.style.overflow = "hidden";
 
     const focusTimer = window.setTimeout(() => {
-      const focusable = panelRef.current?.querySelector<HTMLElement>(
-        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      );
-      (focusable ?? panelRef.current)?.focus();
+      if (panelRef.current && !panelRef.current.contains(document.activeElement)) {
+        const focusable = panelRef.current.querySelector<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        );
+        (focusable ?? panelRef.current).focus();
+      }
     }, 10);
 
     function handleKeyDown(event: globalThis.KeyboardEvent) {
       if (event.key === "Escape") {
         event.stopPropagation();
-        onOpenChange(false);
+        onOpenChangeRef.current(false);
       }
     }
 
@@ -59,7 +66,7 @@ export function Dialog({
       document.body.style.overflow = originalOverflow;
       previousFocusRef.current?.focus();
     };
-  }, [open, onOpenChange]);
+  }, [open]);
 
   if (!open) return null;
 

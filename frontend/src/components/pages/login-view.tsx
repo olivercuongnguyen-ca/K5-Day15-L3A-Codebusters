@@ -88,7 +88,7 @@ export function LoginView() {
       const me = await staffLogin(email.trim(), password);
       if (me.role !== role) showToast(`Tài khoản này là ${me.role === "admin" ? "Admin" : "Mentor"}.`, "info");
       showToast(`Đã đăng nhập · ${me.display_name}`, "success");
-      router.push("/settings");
+      router.push("/");
     } catch (err) {
       setErrorMessage((err as Error).message);
     } finally {

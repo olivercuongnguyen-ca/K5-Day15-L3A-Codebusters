@@ -1,0 +1,35 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: unify-backend
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - ./data/private:/app/data/private
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/buildings', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        BACKEND_URL: http://backend:8000
+    container_name: unify-frontend
+    ports:
+      - "3001:3001"
+    environment:
+      BACKEND_URL: http://backend:8000
+      PORT: "3001"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped

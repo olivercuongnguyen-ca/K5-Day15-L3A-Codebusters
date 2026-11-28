@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local agent skills & raw design/schedule assets
+/.agents/
+/docs/design/
+/docs/maps/
+/docs/schedule/

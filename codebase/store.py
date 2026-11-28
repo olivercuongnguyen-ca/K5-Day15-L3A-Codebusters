@@ -44,6 +44,8 @@ CREATE TABLE IF NOT EXISTS room_changes (version TEXT, student_id TEXT, session_
     new_room TEXT);
 CREATE TABLE IF NOT EXISTS tokens (student_id TEXT, kind TEXT, token TEXT UNIQUE, PRIMARY KEY (student_id, kind));
 CREATE TABLE IF NOT EXISTS push_subs (endpoint TEXT PRIMARY KEY, student_id TEXT, sub TEXT, created_at TEXT);
+CREATE TABLE IF NOT EXISTS push_prefs (student_id TEXT PRIMARY KEY, class_minutes INT DEFAULT 60,
+    remind_duty INT DEFAULT 1, remind_meeting INT DEFAULT 1, remind_deadline INT DEFAULT 1, updated_at TEXT);
 CREATE TABLE IF NOT EXISTS notified (key TEXT PRIMARY KEY, at TEXT);
 -- Staff accounts (admin, mentor) and sign-in (codebase/auth.py). Students have no account: they use their
 -- student ID. Passwords are PBKDF2 hashes; session tokens are stored as SHA-256.

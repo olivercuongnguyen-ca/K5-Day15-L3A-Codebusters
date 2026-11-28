@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { CalendarSource } from "@/data/mock-schedule";
 import { api, post, type StudentMe } from "@/lib/backend";
 import {
@@ -83,8 +84,32 @@ export function SettingsView() {
     student,
     staff,
     setStudent,
+    refreshIdentity,
     logout,
   } = useApp();
+  const [staffOldPw, setStaffOldPw] = useState("");
+  const [staffNewPw, setStaffNewPw] = useState("");
+  const [changingPw, setChangingPw] = useState(false);
+
+  async function handleStaffPasswordChange(e: React.FormEvent) {
+    e.preventDefault();
+    if (!staffOldPw || staffNewPw.length < 8) {
+      showToast("Mật khẩu mới cần ít nhất 8 ký tự.", "warning");
+      return;
+    }
+    setChangingPw(true);
+    try {
+      await post("/api/auth/password", { old: staffOldPw, new: staffNewPw });
+      setStaffOldPw("");
+      setStaffNewPw("");
+      await refreshIdentity();
+      showToast("Đã cập nhật mật khẩu thành công.", "success");
+    } catch (err) {
+      showToast((err as Error).message, "danger");
+    } finally {
+      setChangingPw(false);
+    }
+  }
   const [calLinks, setCalLinks] = useState<{ ics: string; google: string; outlook: string } | null>(null);
   useEffect(() => {
     if (!student) return;
@@ -203,7 +228,9 @@ export function SettingsView() {
           Cài đặt
         </h1>
         <p className="text-[12px] leading-[18px] md:text-[13px] md:leading-[20px] text-text-secondary">
-          Thông tin học viên, nguồn lịch và liên kết Google Calendar
+          {staff
+            ? "Thông tin tài khoản nhân sự, đổi mật khẩu và công cụ quản trị"
+            : "Thông tin học viên, nguồn lịch và liên kết Google Calendar"}
         </p>
       </header>
 
@@ -295,23 +322,87 @@ export function SettingsView() {
       ) : null}
 
       {staff ? (
-        <section
-          aria-label="Công cụ quản trị"
-          className="bg-surface border border-border rounded-[20px] md:rounded-[24px] p-4 md:p-5 shadow-card-sm flex flex-col gap-2"
-        >
-          <h2 className="text-[15px] leading-[21px] md:text-[17px] md:leading-[24px] font-semibold text-text-primary">
-            {staff.role === "admin" ? "Công cụ admin" : `Nhóm phụ trách: ${staff.teams.join(", ") || "chưa gán"}`}
-          </h2>
-          <p className="text-[13px] leading-[19px] text-text-secondary">
-            {staff.role === "admin"
-              ? "Cập nhật thời khoá biểu, sửa buổi học và quản lý tài khoản mentor qua API của app."
-              : "Xem và đổi ca mentor duty của nhóm qua API của app; học viên trong nhóm sẽ nhận thông báo."}{" "}
-            <a className="text-secondary underline" href="/docs" target="_blank" rel="noopener noreferrer">Mở tài liệu API</a>
-          </p>
-        </section>
+        <>
+          <section
+            aria-label="Công cụ quản trị"
+            className="bg-surface border border-border rounded-[20px] md:rounded-[24px] p-4 md:p-5 shadow-card-sm flex flex-col gap-3"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-col gap-0.5">
+                <h2 className="text-[15px] leading-[21px] md:text-[17px] md:leading-[24px] font-semibold text-text-primary">
+                  {staff.role === "admin"
+                    ? "Bảng điều khiển Admin"
+                    : `Nhóm phụ trách: ${staff.teams.join(", ") || "chưa gán"}`}
+                </h2>
+                <p className="text-[13px] leading-[19px] text-text-secondary">
+                  {staff.role === "admin"
+                    ? "Tải thời khoá biểu, sửa giờ/phòng buổi học và quản lý tài khoản Mentor."
+                    : "Xem, thêm mới, đổi giờ hoặc hủy ca mentor duty của các nhóm được giao."}
+                </p>
+              </div>
+              <Link
+                href="/"
+                className="inline-flex items-center justify-center rounded-full min-h-9 px-4 text-[13px] font-medium bg-primary text-on-primary hover:bg-primary-pressed transition-colors shrink-0"
+              >
+                {staff.role === "admin" ? "Mở Quản trị" : "Mở Lịch trực"}
+              </Link>
+            </div>
+            <div className="pt-2 border-t border-border/70 flex items-center justify-between text-[12.5px] text-text-secondary">
+              <span>Tài liệu REST API (Swagger)</span>
+              <a
+                className="text-secondary font-medium underline"
+                href="/docs"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Mở /docs
+              </a>
+            </div>
+          </section>
+
+          <section
+            aria-label="Đổi mật khẩu tài khoản"
+            className="bg-surface border border-border rounded-[20px] md:rounded-[24px] p-4 md:p-5 shadow-card-sm flex flex-col gap-3"
+          >
+            <div className="flex flex-col gap-0.5">
+              <h2 className="text-[15px] leading-[21px] md:text-[17px] md:leading-[24px] font-semibold text-text-primary">
+                Đổi mật khẩu
+              </h2>
+              <p className="text-[12.5px] text-text-secondary">
+                {staff.must_change
+                  ? "Tài khoản đang dùng mật khẩu tạm — hãy đổi mật khẩu mới để mở khóa toàn bộ chức năng."
+                  : "Mật khẩu mới cần có ít nhất 8 ký tự."}
+              </p>
+            </div>
+            <form
+              onSubmit={handleStaffPasswordChange}
+              className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 items-end"
+            >
+              <Input
+                label="Mật khẩu hiện tại"
+                type="password"
+                value={staffOldPw}
+                onChange={(e) => setStaffOldPw(e.target.value)}
+                placeholder="Nhập mật khẩu hiện tại"
+              />
+              <Input
+                label="Mật khẩu mới (≥ 8 ký tự)"
+                type="password"
+                value={staffNewPw}
+                onChange={(e) => setStaffNewPw(e.target.value)}
+                placeholder="Nhập mật khẩu mới"
+              />
+              <Button type="submit" variant="primary" size="md" loading={changingPw} fullWidth>
+                Lưu mật khẩu
+              </Button>
+            </form>
+          </section>
+        </>
       ) : null}
 
-      {/* Integrated Sources Section (#nguon-lich) */}
+      {/* Integrated Sources Section (#nguon-lich) — Student only */}
+      {!staff ? (
+        <>
       <section
         id="nguon-lich"
         aria-labelledby="sources-section-heading"
@@ -511,6 +602,8 @@ export function SettingsView() {
           Thêm vào Outlook
         </Button>
       </section>
+        </>
+      ) : null}
 
       {/* Sign out (Demo) */}
       <div className="pt-1">

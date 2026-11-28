@@ -104,6 +104,43 @@ self.addEventListener("message", (event) => {
   }
 });
 
+self.addEventListener("push", (event) => {
+  let payload = {
+    title: "Unify — Thông báo lịch học",
+    body: "Lịch học hoặc phòng học của bạn vừa có cập nhật mới.",
+    tag: "unify-schedule",
+  };
+  if (event.data) {
+    try {
+      const parsed = event.data.json();
+      payload = { ...payload, ...parsed };
+    } catch {
+      payload.body = event.data.text();
+    }
+  }
+  event.waitUntil(
+    self.registration.showNotification(payload.title, {
+      body: payload.body,
+      tag: payload.tag || "unify-schedule",
+      icon: "/icons/icon-192x192.png",
+      badge: "/icons/icon-192x192.png",
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if ("focus" in client) return client.focus();
+      }
+      if (self.clients.openWindow) return self.clients.openWindow("/");
+      return undefined;
+    }),
+  );
+});
+
 self.addEventListener("fetch", (event) => {
   const request = event.request;
   const url = new URL(request.url);
