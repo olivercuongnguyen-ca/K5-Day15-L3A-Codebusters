@@ -17,7 +17,22 @@ The **graded AI slice** is the leave-request workflow in `codebase/agent.py` (se
 - Data layer (built, tested — reuse, don't rewrite): `codebase/tkb.py` (timetable parser), `codebase/ics_feed.py`
   (Phoenix feed), `codebase/mail_ingest.py` (timetable from .eml/inbox), `codebase/store.py` (SQLite at
   `data/private/app.db`: `ingest_tkb`, `ingest_phoenix`, `week(student_id, monday)` with clashes).
+  Shared Postgres (Neon) when `DATABASE_URL` is set in `.env` (`codebase/db.py`: same SQLite-style SQL, `?`
+  placeholders, `with con:` transactions); unset = SQLite. Tests use SQLite unless `TEST_DATABASE_URL` is set
+  (then a throwaway `cb_test` schema). `DATABASE_URL` holds a password: never print, log or commit it.
   CLI: `python3 scripts/ingest.py inbox|tkb|phoenix|week`. Tests: `.venv/bin/pytest -q tests`.
+- Roles (branch backend-roles): `codebase/auth.py` (accounts, PBKDF2 passwords, cookie sessions, lockout),
+  `codebase/admin.py` (admin timetable edits), `codebase/duties.py` (mentor duty changes layered over Phoenix).
+  Only admins and mentors sign in; students have no account: they enter their student ID (+ optional team code, editable
+  in settings), kept in a plain cookie. First admin:
+  `python3 scripts/users.py create-admin --username <name>`. Route list: top of `codebase/web/server.py`, or `/docs`.
+- Nhóm vs team: a **nhóm** (`students.team`, "Nhóm 18") is a mentor's group of many teams and only shares mentor
+  duty; it is read from the student's Phoenix mentor-duty titles, never typed. A **team** (`students.squad`, a code
+  like "T050" typed by the student, matched ignoring case/spaces) is 4 people who meet.
+- Team meetings (`codebase/meetings.py`) are per team: a student signs in with a password (only for this; tables
+  `student_accounts`, `student_sessions`) to schedule; teammates see link + passcode with their ID only and get a push.
+  Suggestions = slots with no REQUIRED item for any teammate (class sessions, mentor duty of each teammate's nhóm,
+  the team's other meetings); workshops / office hours only flag an overlap.
 - Phoenix feed URLs are secrets. Never print, log, commit, or send them to the model.
 
 ## Hard rules (in addition to AGENTS.md)

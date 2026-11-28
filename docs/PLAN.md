@@ -68,7 +68,8 @@ Multi-agent has no distinct roles here.
 
 **AI output contract** (single call, JSON):
 `{"status": "ready"|"need_info"|"refuse", "sessions": [ids], "missing": [str], "question": str,
-  "email": {"subject": str, "body": str}, "reason": str}`
+  "tips": [≤3 str], "email": {"subject": str, "body": str}, "reason": str}` — `tips` = what to add for a faster approval
+(shown to the student, never in the email). Before the model, code asks back on an empty / too short / gibberish reason.
 
 **Guards (code, after the model):** every date/time/room/session name in the body must exist in the facts given ·
 recipient comes from config, never from the model · refuse when asked to invent a hospital, doctor, or evidence ·

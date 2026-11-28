@@ -1,0 +1,250 @@
+@import "tailwindcss";
+
+:root {
+  /* Semantic Colors — Unify V5 Ivory–Pink–Lilac Editorial (from P-090) */
+  --background: #FFF9F4;
+  --surface: #FFFEFC;
+  --surface-subtle: #FAF3ED;
+  --surface-high: #EDE3DA;
+
+  --primary: #171719;
+  --on-primary: #FFFFFF;
+  --primary-pressed: #26252B;
+  --primary-container: #F4EEFF;
+  --on-primary-container: #2B1D3D;
+
+  --secondary: #5C4375;
+  --on-secondary: #FFFFFF;
+
+  --blush: #F5D5E8;
+  --blush-soft: #FCF0F7;
+  --lilac: #E5D6FF;
+  --lilac-soft: #F4EEFF;
+  --peach: #FFD9B8;
+  --peach-soft: #FFF2E6;
+
+  /* Mapped accent tokens for Unify schedule controls */
+  --olive: #5C4375;
+  --on-olive: #FFFFFF;
+  --sage-background: #E8DCFF;
+  --on-sage: #1F172B;
+
+  --text-primary: #171719;
+  --text-secondary: #6F6870;
+  --border: #E3DAE0;
+
+  --warning-background: #FFEDD5;
+  --on-warning: #7C2D12;
+
+  --danger: #BA1A1A;
+  --danger-pressed: #93000A;
+  --on-danger: #FFFFFF;
+  --danger-background: #FFDAD6;
+  --on-danger-background: #93000A;
+
+  /* Multi-layer Ambient Radial Gradients (Ivory–Pink–Lilac–Peach) */
+  --gradient-ambient:
+    radial-gradient(circle at 86% 10%, rgba(245, 213, 232, 0.58) 0%, rgba(245, 213, 232, 0) 42%),
+    radial-gradient(circle at 12% 24%, rgba(229, 214, 255, 0.52) 0%, rgba(229, 214, 255, 0) 46%),
+    radial-gradient(circle at 50% 96%, rgba(255, 217, 184, 0.56) 0%, rgba(245, 213, 232, 0.38) 36%, rgba(255, 249, 244, 0) 72%);
+
+  /* Spacing Scale (4px grid) */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-page-margin: 20px;
+  --space-xl: 24px;
+  --space-2xl: 32px;
+
+  /* Radius Scale */
+  --radius-sm: 8px;
+  --radius-default: 14px;
+  --radius-md: 16px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* Warm Soft Editorial Shadows */
+  --shadow-card-sm: 0 4px 12px -2px rgba(23, 23, 25, 0.05), 0 2px 6px -1px rgba(23, 23, 25, 0.03);
+  --shadow-card: 0 10px 24px -4px rgba(23, 23, 25, 0.06), 0 4px 10px -2px rgba(23, 23, 25, 0.03);
+  --shadow-overlay: 0 16px 32px -6px rgba(23, 23, 25, 0.14), 0 6px 14px -3px rgba(23, 23, 25, 0.05);
+  --shadow-toast: 0 12px 28px -4px rgba(23, 23, 25, 0.22);
+
+  /* Motion */
+  --duration-state-change: 180ms;
+  --duration-surface-enter: 240ms;
+  --duration-surface-exit: 180ms;
+  --ease-state-change: ease-out;
+  --ease-surface-enter: cubic-bezier(0.2, 0, 0, 1);
+  --ease-surface-exit: cubic-bezier(0.3, 0, 1, 1);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-subtle: var(--surface-subtle);
+  --color-surface-high: var(--surface-high);
+  --color-primary: var(--primary);
+  --color-on-primary: var(--on-primary);
+  --color-primary-pressed: var(--primary-pressed);
+  --color-primary-container: var(--primary-container);
+  --color-on-primary-container: var(--on-primary-container);
+  --color-secondary: var(--secondary);
+  --color-on-secondary: var(--on-secondary);
+  --color-blush: var(--blush);
+  --color-blush-soft: var(--blush-soft);
+  --color-lilac: var(--lilac);
+  --color-lilac-soft: var(--lilac-soft);
+  --color-peach: var(--peach);
+  --color-peach-soft: var(--peach-soft);
+  --color-olive: var(--olive);
+  --color-on-olive: var(--on-olive);
+  --color-sage-background: var(--sage-background);
+  --color-on-sage: var(--on-sage);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-border: var(--border);
+  --color-warning-background: var(--warning-background);
+  --color-on-warning: var(--on-warning);
+  --color-danger: var(--danger);
+  --color-danger-pressed: var(--danger-pressed);
+  --color-on-danger: var(--on-danger);
+  --color-danger-background: var(--danger-background);
+  --color-on-danger-background: var(--on-danger-background);
+
+  --font-sans: var(--font-be-vietnam-pro), ui-sans-serif, system-ui, sans-serif;
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-full: var(--radius-full);
+
+  --shadow-card-sm: var(--shadow-card-sm);
+  --shadow-card: var(--shadow-card);
+  --shadow-overlay: var(--shadow-overlay);
+  --shadow-toast: var(--shadow-toast);
+}
+
+html {
+  scroll-padding-top: 80px;
+  background-color: var(--background);
+  color: var(--text-primary);
+}
+
+body {
+  background-color: var(--background);
+  background-image: var(--gradient-ambient);
+  background-attachment: fixed;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+}
+
+/* Warm Translucent Floating Pill (from P-090 Bottom Bar) */
+.glass-pill {
+  background: rgba(255, 254, 252, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(227, 218, 224, 0.72);
+  box-shadow:
+    0 14px 34px -6px rgba(23, 23, 25, 0.08),
+    0 4px 12px -2px rgba(92, 67, 117, 0.05);
+}
+
+@keyframes unify-surface-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes unify-drawer-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-unify-surface {
+  animation: unify-surface-in var(--duration-surface-enter) var(--ease-surface-enter) both;
+}
+
+.animate-unify-drawer {
+  animation: unify-surface-in var(--duration-surface-enter) var(--ease-surface-enter) both;
+}
+
+@media (min-width: 768px) {
+  .animate-unify-drawer {
+    animation: unify-drawer-in var(--duration-surface-enter) var(--ease-surface-enter) both;
+  }
+}
+
+/* Subtle Custom Scrollbar (matches Ivory–Lilac editorial palette) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(111, 104, 112, 0.28) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(111, 104, 112, 0.28);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(92, 67, 117, 0.48);
+}
+
+.unify-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(111, 104, 112, 0.32) transparent;
+  overscroll-behavior: contain;
+}
+
+.unify-scroll::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.unify-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  margin-block: 6px;
+}
+
+.unify-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(111, 104, 112, 0.32);
+  border-radius: 9999px;
+}
+
+.unify-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(92, 67, 117, 0.52);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
