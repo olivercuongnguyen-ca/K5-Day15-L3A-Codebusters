@@ -129,7 +129,6 @@ export function EventCard({
         <div className="flex flex-col gap-1 md:gap-1.5 min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
             <Badge variant={catConfig.variant}>{resolvedCategoryLabel}</Badge>
-            {isPast ? <Badge variant="danger">Đã qua hạn</Badge> : null}
             {changeNote ? <Badge variant="warning">{changeNote}</Badge> : null}
           </div>
           <h3 className="text-[14px] leading-[20px] md:text-[16px] md:leading-[24px] font-semibold text-text-primary text-pretty">
@@ -161,8 +160,9 @@ export function EventCard({
 
   const cardSurfaceClasses = cn(
     "group flex-1 bg-surface border rounded-[16px] md:rounded-[20px] p-3 md:p-4 shadow-card-sm text-left",
-    "transition-colors duration-[180ms] ease-out",
+    "transition-all duration-[180ms] ease-out",
     isHighlighted ? "border-secondary/45" : "border-border",
+    isPast && "opacity-55 grayscale-[45%]",
     onSelect &&
       "cursor-pointer hover:border-secondary/50 hover:bg-surface-subtle/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
     !showTimelineRail && className,

@@ -341,7 +341,7 @@ export function TodayView() {
               return (
                 <Fragment key={event.id}>
                   {isTodaySelected && index === nowIndex ? <NowLine lineRef={nowLineRef} /> : null}
-                  <div className={cn(past && "opacity-80 transition-opacity")} aria-label={past ? "Đã qua hạn" : undefined}>
+                  <div aria-label={past ? "Đã qua" : undefined}>
                     <EventCard
                       variant="timeline"
                       showTimelineRail
