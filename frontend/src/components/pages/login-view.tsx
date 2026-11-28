@@ -155,7 +155,7 @@ export function LoginView() {
               },
               {
                 value: "mentor",
-                label: "Mentor / Coach",
+                label: "Mentor",
                 icon: <SchoolIcon size={16} />,
               },
               {
@@ -280,7 +280,7 @@ export function LoginView() {
 
                 <Button type="submit" variant="primary" size="lg" fullWidth disabled={busy}>
                   {role === "mentor"
-                    ? "Đăng nhập Mentor / Lab Coach"
+                    ? "Đăng nhập Mentor"
                     : "Đăng nhập Admin"}
                 </Button>
               </>
