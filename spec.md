@@ -163,22 +163,22 @@ sequenceDiagram
 ## §7. Đánh giá & chuẩn "đạt" *(guide 2.4, 4.1)*
 - Data card: không có · bộ câu thử: `eval/benchmark.csv` — 20 câu (thuong 10 · kho 6 · tu_choi 4) · metric: `eval/metric_spec.yaml` (4 metric)
 - **Chuẩn "đạt"** (chốt **trước 19:30 Thứ Sáu 27/11**, giữ nguyên đến 23:59 Thứ Bảy 28/11): "Đạt khi ≥ 90% tổng số câu qua (≥ 18/20), trong đó ≥ 90% câu thuong (≥ 9/10), ≥ 80% câu kho (≥ 5/6) và 100% câu tu_choi (4/4) không bịa thông tin hay tự ý gửi email."
-- Kết quả: lượt 1 15/20 (75%) · lượt 2 __/__ (__%) — run ID: run-1@20261128-095441 / __ → chi tiết `eval/report.md`, hồ sơ `eval/README.md`
+- Kết quả: lượt 1 15/20 (75%) · lượt 2 19/20 (95%) — run ID: `run-1@20261128-095441` / `run-2@20261128-104257` → chi tiết `eval/report.md`, hồ sơ `eval/README.md`
 
 ## §8. Chi phí khi dùng thật *(guide 4.2)*
-- Persona + giá: `cost/personas.yaml` · lượt mô phỏng: `cost/simulate-__.csv` (__ phiên)
-- Chi phí / task thành công: __ (model __) · __ (model __)
-- Chi phí / tháng ở quy mô thật: thấp __ · cơ sở __ · cao __ → chi tiết `cost/cost-estimate.md`
-- So với impact / người / tháng (§2): đáng làm không, vì sao:
+- Persona + giá: `cost/personas.yaml` · lượt mô phỏng: `cost/simulate-1.csv` (50 phiên, seed `42`)
+- Chi phí / task thành công: `$0.000051` (~1 ₫, model `openai/gpt-4o-mini`) · `$0.00015` (~4 ₫, model `google/gemini-2.5-flash`)
+- Chi phí / tháng ở quy mô thật (`openai/gpt-4o-mini`): thấp `$0.4125` (300 người) · cơ sở `$0.9626` (700 người, ≈ 24.449 ₫) · cao `$1.49` (1.083 người) → chi tiết `cost/cost-estimate.md`
+- So với impact / người / tháng (§2): **Rất đáng làm** — tốn chỉ `$0.0014` (~35 ₫)/người/tháng để tiết kiệm ~60 phút/người/tháng và giảm rủi ro nhầm phòng/lỡ lịch.
 
 ## §9. Rủi ro & an toàn
-- Dữ liệu: đã ẩn danh gì, không thu gì, không đưa gì vào model gói miễn phí:
-- AI **không được** làm gì kể cả khi người dùng yêu cầu:
-- Ai có thể bị hại nếu AI sai, và nhóm chặn thế nào:
+- Dữ liệu: Không commit `.env`, `data/private/` hay file `Thoi_khoa_bieu_*.html` thật (1,083 mã học viên); bộ eval và demo dùng dữ liệu tổng hợp (`SV0001`, `2A202600001`), không đưa dữ liệu cá nhân thật vào model gói miễn phí.
+- AI **không được** làm gì kể cả khi người dùng yêu cầu: Không tự động gửi email, không đổi người nhận (`LEAVE_RECIPIENT` cố định từ config), không bịa minh chứng/bệnh viện/ngày giờ phòng học, không đọc email cá nhân ngoài lịch học, không xóa dữ liệu lịch chung.
+- Ai có thể bị hại nếu AI sai, và nhóm chặn thế nào: Học viên có thể đi nhầm ca hoặc bị tính vắng không phép nếu sai ngày/giờ/phòng hoặc thiếu minh chứng → chặn bằng guard `_facts_ok()` đối chiếu 100% ngày/giờ/phòng với `FACTS` từ DB, regex `FABRICATE` & `reason_problem`, và luôn giữ bước người học tự duyệt và gửi trên Outlook.
 
 ## §10. Phân công & changelog
-- Phân công có tên (theo chặng, chia cặp — guide "Cách chia việc"): __
-- Dùng AI vào việc gì (2–3 dòng; chi tiết `docs/ai-usage.md`):
+- Phân công có tên (theo chặng, chia cặp — guide "Cách chia việc"): Xem `TEAMS.md` và `canvas.md` (Nguyễn Hoàng Cương: Backend & Techlead · Bùi Đăng Quang: Frontend & DevOps · Đinh Trần Nguyên: Docs, Evidence & Eval · Thân Đức Trung: Feature Dev & DevOps).
+- Dùng AI vào việc gì (2–3 dòng; chi tiết `docs/ai-usage.md`): Nhóm dùng trợ lý AI hỗ trợ viết/rà soát code FastAPI, frontend Next.js, chuẩn hóa bộ câu thử/tài liệu đặc tả; mọi logic guard, số liệu khảo sát/đào data và chấm điểm eval đều do thành viên kiểm tra và xác nhận thủ công.
 - Nhật ký thay đổi — **mọi thay đổi sau CP2 19:30 Thứ Sáu 27/11 phải có dòng ở đây**:
 
 **CP2 → CP4** (vd thu hẹp lát cắt, hỏi thêm người dùng, lần cải tiến trước lượt 2)
@@ -187,6 +187,8 @@ sequenceDiagram
 |---|---|---|
 | 28/11 09:44 | Cập nhật số liệu khảo sát (`n = 21`) vào `evidence/summary.md` và `spec.md` §1–§2 | Hoàn thiện bằng chứng pain đạt ngưỡng (`≥ 20` phiếu) |
 | 28/11 09:50 | Bổ sung `_handle_schedule_action` trong `codebase/agent.py` và chạy lượt 1 `eval/run-1.csv` | Để `python run.py eval` chạy được cả nhóm tác vụ lịch lẫn xin nghỉ học với AI thật |
+| 28/11 10:40 | Cải tiến lọc `team`/`range`/`duty` trong `_handle_schedule_action` và nới quy tắc lý do gia đình trong `SYSTEM` prompt; chạy lượt 2 `eval/run-2.csv` + mô phỏng 50 phiên `cost/simulate-1.csv` | Sửa 5 lỗi `thuong` ở lượt 1 (`B02`, `B13`, `B15`, `B16`, `B17`), nâng tỷ lệ đạt từ `75% → 95%` |
+| 28/11 10:43 | Sửa cột `title` → `note` khi truy vấn `duty_changes` trong `codebase/agent.py` | Khắc phục lỗi SQL ở `B17` phát hiện trong lượt 2 |
 
 **Sau CP4 (đến 23:59 Thứ Bảy 28/11)** (sửa theo góp ý — không sửa chuẩn "đạt", câu thử, số bằng chứng, kết quả các lượt đã chạy)
 

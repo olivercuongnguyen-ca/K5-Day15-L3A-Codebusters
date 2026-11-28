@@ -1,52 +1,42 @@
 # Mô phỏng chi phí khi dùng thật — điền ở guide bước 4.2.
-# Ôn lại: ngày 13, ngày 1, ngày 14 · lab ngày 13, lab ngày 14.
 # Mọi số phải có nguồn (data / phỏng vấn / khảo sát / quy mô khoá có nguồn) hoặc ghi rõ "(tự ước tính)".
-# Chạy: python run.py simulate --try   (10 phiên, kiểm khung — làm trước CP3)
-#       python run.py simulate         (đủ số phiên dưới đây — bản nộp CP4)
-# Thay mọi dòng "(ví dụ)" bằng số và nguồn của nhóm; simulate nhắc nếu còn sót.
 
 sessions: 50        # số phiên mô phỏng — bản nộp ≥50
 seed: 42            # giữ cố định để chạy lại ra cùng chuỗi phiên
 
-users:              # số người dùng thật nếu đưa vào dùng — 3 kịch bản, ở quy mô thật của sản phẩm
-                    # track A: khoá học · track B–F: người dùng của sản phẩm / nhóm nhắm tới, nguồn công khai có link
+users:              # số người dùng thật nếu đưa vào dùng — 3 kịch bản, quy mô thật của track A
   low: 300
   base: 700
-  high: 1000
-  source: "(ví dụ) track A — thay bằng số của nhóm. Cơ sở: lớp L3 hơn 700 học viên (README hackathon); thấp, cao: (tự ước tính)"
+  high: 1083
+  source: "Cơ sở: lớp L3 hơn 700 học viên (README hackathon); Cao: 1,083 học viên toàn khóa từ scripts/mine_room_changes.py; Thấp: 300 (tự ước tính 1 nhóm lớp)"
 
-personas:           # ≥3 kiểu người dùng; share cộng lại = 1
+personas:           # ≥3 kiểu người dùng; share cộng lại = 1 (từ khảo sát n=21, evidence/survey/results.csv)
   - name: dung_it
-    share: 0.5              # tỉ lệ người dùng kiểu này
-    uses_per_month: 4       # số phiên / người / tháng
-    turns_per_session: 1    # số lượt hỏi trong một phiên
-    source: "(ví dụ) phỏng vấn P1, P3 — thay bằng nguồn của nhóm"
+    share: 0.10             # 2/21 (9.5%) kiểm tra vài lần/tuần
+    uses_per_month: 8       # ~2 lần/tuần × 4 tuần (tự ước tính từ tần suất vài lần/tuần)
+    turns_per_session: 1
+    source: "khảo sát n=21 (câu D: 2/21 kiểm tra vài lần/tuần); số phiên/tháng (tự ước tính)"
   - name: dung_vua
-    share: 0.3
-    uses_per_month: 10
-    turns_per_session: 3
-    source: "(ví dụ) khảo sát n = 24, câu 3"
+    share: 0.29             # 6/21 (28.6%) kiểm tra 1 lần/ngày
+    uses_per_month: 20      # ~5 ngày học/tuần × 4 tuần (tự ước tính)
+    turns_per_session: 2
+    source: "khảo sát n=21 (câu D: 6/21 kiểm tra 1 lần/ngày); số lượt/phiên (tự ước tính)"
   - name: dung_nhieu
-    share: 0.2
-    uses_per_month: 20
-    turns_per_session: 5
-    source: "(ví dụ) data/preclass: đếm số lượt / người — cách đếm ở evidence/data-mining.md"
-# Mỗi lượt hỏi lấy ngẫu nhiên một đầu vào trong eval/benchmark.csv (type thuong và kho).
-# Persona hỏi kiểu riêng: thêm vào persona đó
-#     types: [thuong, kho, tu_choi]
-# hoặc
-#     inputs: ["câu hỏi kiểu 1", "câu hỏi kiểu 2"]
+    share: 0.61             # 13/21 (61.9%) kiểm tra nhiều lần/ngày
+    uses_per_month: 30      # hằng ngày (tự ước tính)
+    turns_per_session: 3
+    source: "khảo sát n=21 (câu D: 13/21 kiểm tra nhiều lần/ngày); số phiên & lượt (tự ước tính)"
 
-prices:             # USD / 1 triệu token — chép từ further-reading/model-prices.md của repo đề. ≥2 mức model
-  - model: gemini-3.1-flash-lite
-    input: 0.25
-    output: 1.50
-    source: "(ví dụ) https://ai.google.dev/gemini-api/docs/pricing · xem 25/11/2026"
-  - model: gemini-4-hydrogen
-    input: 1.50
-    output: 7.50
-    source: "(ví dụ) https://ai.google.dev/gemini-api/docs/pricing · xem 25/11/2026"
+prices:             # USD / 1 triệu token
+  - model: openai/gpt-4o-mini
+    input: 0.15
+    output: 0.60
+    source: "https://openai.com/api/pricing/ · xem 28/11/2026"
+  - model: google/gemini-2.5-flash
+    input: 0.30
+    output: 2.50
+    source: "https://ai.google.dev/gemini-api/docs/pricing · xem 28/11/2026"
 
-usd_to_vnd:         # tuỳ chọn: điền thì bản tóm tắt in thêm tiền Việt
-  rate:
-  source:
+usd_to_vnd:
+  rate: 25400
+  source: "tỷ giá tham khảo (tự ước tính 28/11/2026)"
