@@ -72,12 +72,15 @@ def send(con, student_id: str, title: str, body: str, url: str = "/", tag: str =
     for row in con.execute("SELECT endpoint, sub FROM push_subs WHERE student_id=?", (student_id,)).fetchall():
         try:
             webpush(json.loads(row["sub"]), json.dumps({"title": title, "body": body, "url": url, "tag": tag}),
-                    vapid_private_key=vapid(), vapid_claims=dict(CLAIMS))
+                    vapid_private_key=vapid(), vapid_claims=dict(CLAIMS), ttl=3600)
             sent += 1
         except WebPushException as e:
-            if e.response is not None and e.response.status_code in (404, 410):
+            code = e.response.status_code if e.response is not None else None
+            if code in (404, 410):
                 with con:
                     con.execute("DELETE FROM push_subs WHERE endpoint=?", (row["endpoint"],))
+            else:
+                print("[notify] webpush failed (%s): %s" % (code, e))
     return sent
 
 

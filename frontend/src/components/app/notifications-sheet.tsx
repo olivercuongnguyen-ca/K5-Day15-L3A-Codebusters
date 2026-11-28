@@ -342,8 +342,12 @@ export function NotificationsSheet({
   async function handleTestPush() {
     setPushBusy(true);
     try {
-      await post("/api/push/test", {});
-      showToast("Đã gửi thông báo thử tới thiết bị này.", "success");
+      const res = await post<{ sent: number }>("/api/push/test", {});
+      if (res.sent > 0) {
+        showToast("Đã gửi thông báo thử tới thiết bị này.", "success");
+      } else {
+        showToast("Không gửi được thông báo thử. Hãy thử tắt/bật lại thông báo đẩy.", "warning");
+      }
     } catch (err) {
       showToast((err as Error).message, "danger");
     } finally {
