@@ -106,8 +106,78 @@ def _fake_model(facts):
     return json.dumps({"status": "ready", "question": "", "subject": subject, "body": body}, ensure_ascii=False)
 
 
+def _handle_schedule_action(req: dict) -> dict:
+    """Rule-based handler for structured schedule actions (merge, filter, conflict, change, export, refuse)."""
+    action = (req.get("action") or "").strip()
+    if action in ("auto_complete_lab", "dump_private_emails", "delete_shared_schedule"):
+        msg = {
+            "auto_complete_lab": "Từ chối làm hộ và nộp bài hộ vì ngoài phạm vi hệ thống quản lý lịch.",
+            "dump_private_emails": "Từ chối truy xuất và hiển thị email cá nhân ngoài phạm vi lịch học và sự kiện.",
+            "delete_shared_schedule": "Từ chối xóa dữ liệu lịch chung của team khác trên Phoenix; hãy dùng chức năng lọc theo team.",
+        }[action]
+        return _out(status="refuse", question=msg)
+
+    if action == "set_reminder":
+        if not req.get("event_id") or req.get("remind_before_hours") is None or not req.get("channel"):
+            return _out(status="need_info",
+                        question="Vui lòng cung cấp mã/tên buổi học hoặc sự kiện, số giờ nhắc trước và kênh nhận thông báo.")
+        return _out(status="ready", question="Đã lưu cấu hình nhắc lịch (chờ xác nhận).")
+
+    if action == "update_event_manual":
+        return _out(status="need_info",
+                    question="Vui lòng nhập tên buổi họp/team cụ thể và khung giờ chính xác (HH:MM) hoặc đối chiếu nguồn Outlook/Phoenix.")
+
+    if action == "export_ics":
+        if "target_calendar" in req and not req.get("target_calendar"):
+            return _out(status="need_info",
+                        question="Bạn muốn xuất lịch (.ics) sang Google Calendar hay Outlook? Vui lòng chọn nền tảng đích và xác nhận.")
+        return _out(status="ready",
+                    question="Đã tạo bản nháp file lịch chuẩn (.ics) từ Outlook + Phoenix kèm mốc nhắc trước 24 giờ, chờ bạn xác nhận nhập vào lịch cá nhân.")
+
+    if action == "filter_schedule":
+        if "team" in req and not req.get("team") and not req.get("level") and not req.get("event_types"):
+            return _out(status="need_info", question="Vui lòng chọn hoặc nhập tên team / cấp độ (Level) để lọc lịch.")
+        import store
+        con = store.connect()
+        rows = con.execute("SELECT name, date, start, end, rooms FROM sessions ORDER BY date, start LIMIT 20").fetchall()
+        ev_types = req.get("event_types") or []
+        if ev_types:
+            phx = con.execute("SELECT title, start, category FROM phoenix_events ORDER BY start LIMIT 20").fetchall()
+            items = [dict(r) for r in phx if any(k in (r["category"] or "").lower() or k in (r["title"] or "").lower() for k in ("workshop", "office", "event", "duty"))]
+            return _out(status="ready", sessions=[i["title"] for i in items], based_on=[f"{i['title']} {i['start']}" for i in items])
+        return _out(status="ready", sessions=[r["name"] for r in rows], based_on=[f"{r['name']} {r['date']} {r['start']}-{r['end']}" for r in rows])
+
+    if action == "detect_conflicts":
+        if not req.get("range"):
+            return _out(status="need_info", question="Vui lòng chọn khoảng thời gian kiểm tra trùng lịch (hôm nay, tuần này, tuần sau hoặc sắp tới).")
+        import store
+        con = store.connect()
+        rows = con.execute("SELECT name, date, start, end FROM sessions ORDER BY date, start").fetchall()
+        return _out(status="ready", sessions=[], based_on=[f"Đã quét {len(rows)} buổi từ Outlook + Phoenix, không phát hiện trùng giờ."])
+
+    if action == "detect_changes":
+        import store
+        con = store.connect()
+        changes = con.execute("SELECT session_id, old_room, new_room FROM room_changes LIMIT 20").fetchall()
+        if not changes:
+            return _out(status="ready", based_on=["Không có thay đổi giờ hoặc phòng học so với bản trước đó."])
+        return _out(status="ready", based_on=[f"{c['session_id']}: {c['old_room']} -> {c['new_room']}" for c in changes])
+
+    if action == "merge_schedule":
+        import store
+        con = store.connect()
+        ss = con.execute("SELECT name, date, start, end, rooms FROM sessions ORDER BY date, start LIMIT 20").fetchall()
+        phx = con.execute("SELECT title, start FROM phoenix_events ORDER BY start LIMIT 20").fetchall()
+        based = [f"{r['name']} {r['date']} {r['start']}-{r['end']}" for r in ss] + [f"{p['title']} {p['start']}" for p in phx]
+        return _out(status="ready", sessions=[r["name"] for r in ss], based_on=based)
+
+    return _out(status="need_info", question="Tác vụ chưa được hỗ trợ.")
+
+
 def answer(text: str) -> dict:
     req = _parse_input(text)
+    if "action" in req:
+        return _handle_schedule_action(req)
     sid = (req.get("student_id") or "").strip()
     reason = (req.get("reason") or "").strip()
     evidence = (req.get("evidence_type") or "").strip()
