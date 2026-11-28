@@ -160,7 +160,7 @@ export function DesignSystemShowcase() {
                 <CalendarIcon size={18} />
               </span>
               <span className="text-[13px] leading-[18px] font-medium text-secondary">
-                Unify · Hệ thống thiết kế v1.1
+                ViUnify · Hệ thống thiết kế v1.1
               </span>
               <Badge variant="secondary">Dữ liệu giả lập</Badge>
             </div>

@@ -13,7 +13,6 @@ import {
   EyeIcon,
   EyeOffIcon,
   IdCardIcon,
-  InfoIcon,
   Input,
   LockIcon,
   SchoolIcon,
@@ -124,7 +123,7 @@ export function LoginView() {
               <CalendarIcon size={18} className="md:w-[22px] md:h-[22px]" />
             </span>
             <span className="text-[18px] leading-[24px] md:text-[20px] md:leading-[28px] font-semibold text-text-primary">
-              Unify
+              ViUnify
             </span>
           </div>
 
@@ -170,16 +169,6 @@ export function LoginView() {
           <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
             {role === "student" ? (
               <>
-                <div className="p-3.5 rounded-[16px] bg-surface-subtle border border-border flex items-start gap-2.5">
-                  <InfoIcon
-                    size={18}
-                    className="text-primary shrink-0 mt-0.5"
-                  />
-                  <span className="text-[13px] leading-[19px] text-text-secondary">
-                    Học viên chỉ cần nhập <strong className="font-medium text-text-primary">Mã học viên</strong> để xem lịch học hợp nhất từ Outlook, Phoenix và .ics.
-                  </span>
-                </div>
-
                 <Input
                   label="Mã học viên"
                   name="studentCode"
@@ -209,7 +198,7 @@ export function LoginView() {
                   value={squad}
                   onChange={(e) => setSquad(e.target.value)}
                   placeholder="Ví dụ: T050"
-                  helperText="Dùng để họp team. Nhóm mentor tự lấy từ Phoenix."
+                  helperText="Dùng để họp team."
                 />
 
                 {setup && !setup.timetable ? (

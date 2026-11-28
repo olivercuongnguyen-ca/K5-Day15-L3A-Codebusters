@@ -6,7 +6,7 @@ import { OfflineRetryButton } from "@/components/pwa/offline-retry-button";
 export const metadata: Metadata = {
   title: "Ngoại tuyến",
   description:
-    "Bạn đang ngoại tuyến. Vui lòng kết nối lại mạng để tiếp tục sử dụng Unify.",
+    "Bạn đang ngoại tuyến. Vui lòng kết nối lại mạng để tiếp tục sử dụng ViUnify.",
 };
 
 export default function OfflinePage() {

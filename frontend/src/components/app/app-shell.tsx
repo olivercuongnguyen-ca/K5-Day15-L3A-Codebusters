@@ -81,7 +81,7 @@ export function AppShell({ children, hideRightAside = false }: AppShellProps) {
             </span>
             <div className="flex flex-col min-w-0">
               <span className="text-[16px] leading-[22px] font-semibold text-text-primary">
-                Unify
+                ViUnify
               </span>
               <span className="text-[12px] leading-[16px] text-text-secondary">
                 {brandSubtitle}
@@ -206,32 +206,60 @@ export function AppShell({ children, hideRightAside = false }: AppShellProps) {
             </div>
 
             <div className="flex flex-col gap-2.5">
-              {upcomingDeadlines.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => openEventDetail(item)}
-                  className="w-full text-left p-3.5 rounded-[16px] bg-background border border-border hover:border-primary/50 hover:bg-surface-subtle/50 transition-colors duration-[180ms] flex items-center justify-between gap-3 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                >
-                  <div className="flex items-start gap-2.5 min-w-0">
-                    <span className="w-8 h-8 rounded-[10px] bg-warning-background text-on-warning inline-flex items-center justify-center shrink-0 mt-0.5">
-                      <ClockIcon size={16} />
-                    </span>
-                    <div className="flex flex-col gap-0.5 min-w-0">
-                      <span className="text-[14px] leading-[20px] font-semibold text-text-primary truncate">
-                        {item.title}
+              {upcomingDeadlines.map((item) => {
+                const todayKey = schedule.todayKey;
+                let dayLabel = "";
+                let dayVariant: "danger" | "warning" | "neutral" = "neutral";
+                if (item.dateKey && todayKey) {
+                  if (item.dateKey === todayKey) {
+                    dayLabel = "Hôm nay";
+                    dayVariant = "danger";
+                  } else {
+                    const base = new Date(`${todayKey}T00:00:00`);
+                    base.setDate(base.getDate() + 1);
+                    const tomorrowKey = `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, "0")}-${String(base.getDate()).padStart(2, "0")}`;
+                    if (item.dateKey === tomorrowKey) {
+                      dayLabel = "Ngày mai";
+                      dayVariant = "warning";
+                    } else {
+                      dayLabel = `${item.dateKey.slice(8, 10)}/${item.dateKey.slice(5, 7)}`;
+                    }
+                  }
+                }
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => openEventDetail(item)}
+                    className="w-full text-left p-3.5 rounded-[16px] bg-background border border-border hover:border-primary/50 hover:bg-surface-subtle/50 transition-colors duration-[180ms] flex items-center justify-between gap-3 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <span className="w-8 h-8 rounded-[10px] bg-warning-background text-on-warning inline-flex items-center justify-center shrink-0 mt-0.5">
+                        <ClockIcon size={16} />
                       </span>
-                      <span className="text-[12px] leading-[18px] text-text-secondary tabular-nums">
-                        {item.timeRange} · {item.sources.join(", ")}
-                      </span>
+                      <div className="flex flex-col gap-0.5 min-w-0">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="text-[14px] leading-[20px] font-semibold text-text-primary truncate">
+                            {item.title}
+                          </span>
+                          {dayLabel ? (
+                            <Badge variant={dayVariant} size="sm" className="shrink-0">
+                              {dayLabel}
+                            </Badge>
+                          ) : null}
+                        </div>
+                        <span className="text-[12px] leading-[18px] text-text-secondary tabular-nums">
+                          {item.timeRange} · {item.sources.join(", ")}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  <ChevronRightIcon
-                    size={18}
-                    className="text-text-secondary shrink-0"
-                  />
-                </button>
-              ))}
+                    <ChevronRightIcon
+                      size={18}
+                      className="text-text-secondary shrink-0"
+                    />
+                  </button>
+                );
+              })}
             </div>
           </section>
 

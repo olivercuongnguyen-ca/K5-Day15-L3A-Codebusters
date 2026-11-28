@@ -39,7 +39,7 @@ export function buildLeaveEmailDraft(input: LeaveDraftInput): LeaveEmailDraft {
       ? `${input.event.formatDetail} (Phòng ${roomCode})`
       : input.event.formatDetail;
 
-  const subject = `[Unify - Xin phép nghỉ học] ${studentName}${
+  const subject = `[ViUnify - Xin phép nghỉ học] ${studentName}${
     studentCode ? ` (${studentCode})` : ""
   } - ${input.event.title} (${input.event.dateLabel})`;
 

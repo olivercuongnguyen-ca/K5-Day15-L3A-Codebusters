@@ -26,6 +26,19 @@ import {
 import { AdminDashboard } from "./admin-dashboard";
 import { MentorDashboard } from "./mentor-dashboard";
 
+function getDeadlineDayMeta(
+  dateKey: string,
+  todayKey: string,
+): { label: string; variant: "danger" | "warning" | "neutral" } {
+  if (!dateKey || !todayKey) return { label: "", variant: "neutral" };
+  if (dateKey === todayKey) return { label: "Hôm nay", variant: "danger" };
+  const base = new Date(`${todayKey}T00:00:00`);
+  base.setDate(base.getDate() + 1);
+  const tomorrowKey = `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, "0")}-${String(base.getDate()).padStart(2, "0")}`;
+  if (dateKey === tomorrowKey) return { label: "Ngày mai", variant: "warning" };
+  return { label: `${dateKey.slice(8, 10)}/${dateKey.slice(5, 7)}`, variant: "neutral" };
+}
+
 /** Thin "now" marker between what already happened and what is next. */
 function NowLine({ lineRef }: { lineRef: Ref<HTMLDivElement> }) {
   return (
@@ -324,11 +337,11 @@ export function TodayView() {
             )}
           >
             {visibleEvents.map((event, index) => {
-              const past = isTodaySelected && schedule.isPast(event);
+              const past = schedule.isPast(event);
               return (
                 <Fragment key={event.id}>
                   {isTodaySelected && index === nowIndex ? <NowLine lineRef={nowLineRef} /> : null}
-                  <div className={cn(past && "opacity-50 grayscale-[60%] transition-opacity")} aria-label={past ? "Đã qua" : undefined}>
+                  <div className={cn(past && "opacity-80 transition-opacity")} aria-label={past ? "Đã qua hạn" : undefined}>
                     <EventCard
                       variant="timeline"
                       showTimelineRail
@@ -340,6 +353,7 @@ export function TodayView() {
                       formatLabel={event.formatLabel}
                       sources={event.sources}
                       changeNote={event.changeNote}
+                      isPast={past}
                       onSelect={() => openEventDetail(event)}
                     />
                   </div>
@@ -363,32 +377,42 @@ export function TodayView() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 md:gap-3">
-          {upcomingDeadlines.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => openEventDetail(item)}
-              className="w-full text-left bg-surface border border-border rounded-[16px] md:rounded-[20px] p-3 md:p-4 shadow-card-sm hover:border-secondary/45 transition-colors duration-[180ms] flex items-center justify-between gap-2.5 md:gap-3 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
-            >
-              <div className="flex items-center gap-2.5 md:gap-3 min-w-0">
-                <span className="w-8 h-8 md:w-10 md:h-10 rounded-[12px] md:rounded-[14px] bg-warning-background text-on-warning inline-flex items-center justify-center shrink-0">
-                  <ClockIcon size={16} className="md:w-[18px] md:h-[18px]" />
-                </span>
-                <div className="flex flex-col min-w-0">
-                  <span className="text-[13.5px] leading-[19px] md:text-[15px] md:leading-[21px] font-semibold text-text-primary truncate">
-                    {item.title}
+          {upcomingDeadlines.map((item) => {
+            const dayMeta = getDeadlineDayMeta(item.dateKey, TODAY_DATE_KEY);
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => openEventDetail(item)}
+                className="w-full text-left bg-surface border border-border rounded-[16px] md:rounded-[20px] p-3 md:p-4 shadow-card-sm hover:border-secondary/45 transition-colors duration-[180ms] flex items-center justify-between gap-2.5 md:gap-3 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+              >
+                <div className="flex items-center gap-2.5 md:gap-3 min-w-0">
+                  <span className="w-8 h-8 md:w-10 md:h-10 rounded-[12px] md:rounded-[14px] bg-warning-background text-on-warning inline-flex items-center justify-center shrink-0">
+                    <ClockIcon size={16} className="md:w-[18px] md:h-[18px]" />
                   </span>
-                  <span className="text-[12px] leading-[17px] md:text-[13px] md:leading-[19px] text-text-secondary tabular-nums">
-                    {item.timeRange} · {item.sources.join(", ")}
-                  </span>
+                  <div className="flex flex-col gap-0.5 min-w-0">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-[13.5px] leading-[19px] md:text-[15px] md:leading-[21px] font-semibold text-text-primary truncate">
+                        {item.title}
+                      </span>
+                      {dayMeta.label ? (
+                        <Badge variant={dayMeta.variant} size="sm" className="shrink-0">
+                          {dayMeta.label}
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <span className="text-[12px] leading-[17px] md:text-[13px] md:leading-[19px] text-text-secondary tabular-nums">
+                      {item.timeRange} · {item.sources.join(", ")}
+                    </span>
+                  </div>
                 </div>
-              </div>
-              <ChevronRightIcon
-                size={16}
-                className="text-text-secondary shrink-0 md:w-[18px] md:h-[18px]"
-              />
-            </button>
-          ))}
+                <ChevronRightIcon
+                  size={16}
+                  className="text-text-secondary shrink-0 md:w-[18px] md:h-[18px]"
+                />
+              </button>
+            );
+          })}
         </div>
       </section>
       <NotificationsSheet

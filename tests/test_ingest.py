@@ -57,6 +57,20 @@ def test_ingest_is_idempotent_and_diffs_rooms(tmp_path):
     assert r3["new"] and r3["room_changes"] == 1
 
 
+def test_ingest_merges_non_overlapping_weeks(tmp_path):
+    con = store.connect(str(tmp_path / "t.db"))
+    store.ingest_tkb(con, tkb_html())
+    week2_html = tkb_html(lab_room="E305").replace("2026-11-23", "2026-12-01")
+    r2 = store.ingest_tkb(con, week2_html)
+    assert r2["new"] and r2["room_changes"] == 0
+    w1 = store.week(con, "SV0001", "2026-11-23")
+    w2 = store.week(con, "SV0001", "2026-11-30")
+    assert len(w1["items"]) == 2
+    assert len(w2["items"]) == 2
+    assert w1["items"][0]["my_room"] == "H201"
+    assert w2["items"][0]["my_room"] == "E305"
+
+
 def test_ics_parse_times_categories_and_folding():
     ev = ics_feed.parse(ICS)
     duty = [e for e in ev if e["category"] == "mentor_duty"][0]

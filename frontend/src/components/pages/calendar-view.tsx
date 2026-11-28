@@ -294,6 +294,7 @@ export function CalendarView() {
                     formatLabel={evt.formatLabel}
                     sources={evt.sources}
                     changeNote={evt.changeNote}
+                    isPast={schedule.isPast(evt)}
                     onSelect={() => openEventDetail(evt)}
                   />
                 ))}
@@ -345,6 +346,7 @@ export function CalendarView() {
                         formatLabel={evt.formatLabel}
                         sources={evt.sources}
                         changeNote={evt.changeNote}
+                        isPast={schedule.isPast(evt)}
                         onSelect={() => openEventDetail(evt)}
                       />
                     ))}

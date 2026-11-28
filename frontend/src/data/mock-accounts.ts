@@ -66,7 +66,7 @@ export const MOCK_ACCOUNTS: DemoUserAccount[] = [
     password: "admin123",
     name: "Quản trị đào tạo",
     shortName: "Quản trị viên",
-    subtitle: "Ban điều hành hệ thống Unify",
+    subtitle: "Ban điều hành hệ thống ViUnify",
     initials: "AD",
   },
 ];

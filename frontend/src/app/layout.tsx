@@ -13,15 +13,15 @@ const beVietnamPro = Be_Vietnam_Pro({
 
 export const metadata: Metadata = {
   title: {
-    default: "Unify",
-    template: "%s — Unify",
+    default: "ViUnify",
+    template: "%s — ViUnify",
   },
   description:
     "Ứng dụng tổng hợp lịch học từ Outlook, Phoenix và nguồn .ics.",
-  applicationName: "Unify",
+  applicationName: "ViUnify",
   appleWebApp: {
     capable: true,
-    title: "Unify",
+    title: "ViUnify",
     statusBarStyle: "default",
   },
   icons: {

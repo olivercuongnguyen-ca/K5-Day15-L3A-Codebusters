@@ -156,7 +156,7 @@ def notify_tkb_updated(con, version: str):
         if _once(con, "tkb:%s:%s" % (version, sid)):
             try:
                 send(con, sid, "Thời khóa biểu đã cập nhật",
-                     "Đã có phiên bản thời khóa biểu mới. Mở Unify để kiểm tra lịch học và phòng học của bạn.",
+                     "Đã có phiên bản thời khóa biểu mới. Mở ViUnify để kiểm tra lịch học và phòng học của bạn.",
                      tag="tkb")
             except Exception:
                 pass

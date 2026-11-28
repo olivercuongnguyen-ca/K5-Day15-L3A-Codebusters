@@ -243,7 +243,9 @@ def export_ics(con, student_id: str, cal_name: str = "Lịch AI20K") -> str:
 
 
 def ingest_tkb(con, html: str, source: str = "upload", received_at: str = None) -> dict:
-    """Store a timetable attachment. Idempotent on content hash. Returns {"version", "new", "students", "room_changes"}."""
+    """Store a timetable attachment. Idempotent on content hash. Merges non-overlapping date ranges with existing
+    sessions so uploading a new week appends to previous weeks instead of wiping them.
+    Returns {"version", "new", "students", "room_changes"}."""
     data = parse_tkb(html)
     version = data["hash"]
     if con.execute("SELECT 1 FROM tkb_versions WHERE hash=?", (version,)).fetchone():
@@ -253,19 +255,60 @@ def ingest_tkb(con, html: str, source: str = "upload", received_at: str = None) 
     with con:
         con.execute("INSERT INTO tkb_versions VALUES (?,?,?,?)",
                     (version, received_at, source, json.dumps(data["holidays"], ensure_ascii=False)))
-        con.execute("DELETE FROM sessions")
-        con.executemany("INSERT INTO sessions VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-                        [(x["id"], cls, x["index"], x["date"], x["slot"], x["kind"], x["name"], x["start"], x["end"],
-                          json.dumps(x["rooms"]), version)
-                         for cls, g in data["groups"].items() for x in g["sessions"]])
-        con.execute("DELETE FROM student_rooms")
+
+        # Delete only sessions (and their student_rooms) in the date ranges covered by this new timetable,
+        # preserving earlier/non-overlapping weeks automatically.
+        for cls, g in data["groups"].items():
+            dates = [x["date"] for x in g["sessions"] if x.get("date")]
+            if not dates:
+                continue
+            d_min, d_max = min(dates), max(dates)
+            overlap_ids = [
+                r["id"]
+                for r in con.execute(
+                    "SELECT id FROM sessions WHERE class=? AND date BETWEEN ? AND ?",
+                    (cls, d_min, d_max),
+                ).fetchall()
+            ]
+            if overlap_ids:
+                placeholders = ",".join("?" * len(overlap_ids))
+                con.execute("DELETE FROM student_rooms WHERE session_id IN (%s)" % placeholders, overlap_ids)
+                con.execute("DELETE FROM sessions WHERE id IN (%s)" % placeholders, overlap_ids)
+
+        existing_ids = {r["id"] for r in con.execute("SELECT id FROM sessions").fetchall()}
+        id_map = {}  # (cls, parsed_id) -> stored_id
+        session_rows = []
+        for cls, g in data["groups"].items():
+            for x in g["sessions"]:
+                sid_key = x["id"]
+                if sid_key in existing_ids:
+                    sid_key = "%s-%s-%02d" % (cls, x["date"], x["index"])
+                existing_ids.add(sid_key)
+                id_map[(cls, x["id"])] = sid_key
+                session_rows.append(
+                    (sid_key, cls, x["index"], x["date"], x["slot"], x["kind"], x["name"],
+                     x["start"], x["end"], json.dumps(x["rooms"]), version)
+                )
+
+        con.executemany("INSERT INTO sessions VALUES (?,?,?,?,?,?,?,?,?,?,?)", session_rows)
         con.executemany("INSERT INTO students (id, class, short_name) VALUES (?,?,?) ON CONFLICT(id) DO UPDATE "
                         "SET class=excluded.class, short_name=excluded.short_name",
                         [(sid, st["class"], st["short_name"]) for sid, st in data["students"].items()])
-        rows = [(sid, sess_id, rm) for sid, st in data["students"].items() for sess_id, rm in st["rooms"].items()]
-        con.executemany("INSERT INTO student_rooms VALUES (?,?,?)", rows)
-        changed = [(version, sid, sess_id, old.get((sid, sess_id)), rm) for sid, sess_id, rm in rows
-                   if old and old.get((sid, sess_id)) != rm]
+        rows = [
+            (sid, id_map.get((st["class"], sess_id), sess_id), rm)
+            for sid, st in data["students"].items()
+            for sess_id, rm in st["rooms"].items()
+        ]
+        con.executemany(
+            "INSERT INTO student_rooms VALUES (?,?,?) "
+            "ON CONFLICT(student_id, session_id) DO UPDATE SET room=excluded.room",
+            rows,
+        )
+        changed = [
+            (version, sid, sess_id, old.get((sid, sess_id)), rm)
+            for sid, sess_id, rm in rows
+            if (sid, sess_id) in old and old.get((sid, sess_id)) != rm
+        ]
         con.executemany("INSERT INTO room_changes VALUES (?,?,?,?,?)", changed)
         changes = len(changed)
     return {"version": version, "new": True, "students": len(data["students"]), "room_changes": changes}

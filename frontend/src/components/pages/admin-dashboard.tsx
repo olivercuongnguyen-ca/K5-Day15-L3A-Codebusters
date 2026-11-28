@@ -319,7 +319,7 @@ export function AdminDashboard() {
             </Badge>
           </div>
           <h1 className="text-[22px] leading-[28px] md:text-[26px] md:leading-[34px] font-semibold tracking-[-0.2px] text-text-primary">
-            Quản trị Unify · {currentUser.name}
+            Quản trị ViUnify · {currentUser.name}
           </h1>
           <p className="text-[12.5px] md:text-[13.5px] text-text-secondary">
             Cập nhật thời khóa biểu, điều chỉnh giờ/phòng học, quản lý tài khoản Mentor và lịch trực toàn khóa.

@@ -23,6 +23,7 @@ export interface EventCardProps {
   variant?: EventCardVariant;
   featuredLabel?: string;
   changeNote?: string;
+  isPast?: boolean;
   showTimelineRail?: boolean;
   isLastInTimeline?: boolean;
   ctaLabel?: string;
@@ -55,6 +56,7 @@ export function EventCard({
   variant = "timeline",
   featuredLabel = "Buổi học tiếp theo",
   changeNote,
+  isPast = false,
   showTimelineRail = false,
   isLastInTimeline = false,
   ctaLabel,
@@ -127,6 +129,7 @@ export function EventCard({
         <div className="flex flex-col gap-1 md:gap-1.5 min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
             <Badge variant={catConfig.variant}>{resolvedCategoryLabel}</Badge>
+            {isPast ? <Badge variant="danger">Đã qua hạn</Badge> : null}
             {changeNote ? <Badge variant="warning">{changeNote}</Badge> : null}
           </div>
           <h3 className="text-[14px] leading-[20px] md:text-[16px] md:leading-[24px] font-semibold text-text-primary text-pretty">

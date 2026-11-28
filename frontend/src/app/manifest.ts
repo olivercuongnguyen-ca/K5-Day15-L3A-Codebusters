@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Unify",
-    short_name: "Unify",
+    name: "ViUnify",
+    short_name: "ViUnify",
     description:
       "Ứng dụng tổng hợp lịch học từ Outlook, cổng Phoenix và nguồn .ics.",
     start_url: "/",

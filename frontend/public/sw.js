@@ -106,7 +106,7 @@ self.addEventListener("message", (event) => {
 
 self.addEventListener("push", (event) => {
   let payload = {
-    title: "Unify — Thông báo lịch học",
+    title: "ViUnify — Thông báo lịch học",
     body: "Lịch học hoặc phòng học của bạn vừa có cập nhật mới.",
     tag: "unify-schedule",
   };
