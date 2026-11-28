@@ -147,10 +147,39 @@ def _set_cookie(resp: FResponse, request: Request, token: str):
                     secure=request.url.scheme == "https", path="/")
 
 
+class DemoLoginIn(BaseModel):
+    role: str
+
+
 @app.post("/api/auth/login")
 def login(body: LoginIn, request: Request, response: FResponse):
     con = store.connect()
     tok = auth.login(con, body.username, body.password)
+    _set_cookie(response, request, tok)
+    return auth.user_for_token(con, tok)
+
+
+@app.post("/api/auth/demo-login")
+def demo_login(body: DemoLoginIn, request: Request, response: FResponse):
+    """One-click demo sign-in for hackathon presentations. Disable via DISABLE_DEMO_LOGIN=1."""
+    if os.environ.get("DISABLE_DEMO_LOGIN", "").strip().lower() in ("1", "true", "yes"):
+        raise HTTPException(403, "Chế độ đăng nhập nhanh demo đang tắt.")
+    role = (body.role or "").strip().lower()
+    if role not in ("admin", "mentor"):
+        raise HTTPException(400, "Vai trò không hợp lệ.")
+    con = store.connect()
+    u = con.execute(
+        "SELECT id FROM users WHERE role=? AND disabled=0 ORDER BY id ASC LIMIT 1",
+        (role,),
+    ).fetchone()
+    if not u:
+        import secrets
+        uname = "giaovu" if role == "admin" else "mentor.a"
+        dname = "Giáo vụ AI20K" if role == "admin" else "Mentor A"
+        uid = auth.create_user(con, uname, role, secrets.token_urlsafe(16), dname, must_change=False)
+    else:
+        uid = u["id"]
+    tok = auth.new_session(con, uid)
     _set_cookie(response, request, tok)
     return auth.user_for_token(con, tok)
 

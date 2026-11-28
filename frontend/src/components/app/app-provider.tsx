@@ -75,6 +75,7 @@ interface AppContextValue {
   staff: StaffMe | null;
   enterStudent: (studentId: string, squad?: string) => Promise<StudentMe>;
   staffLogin: (username: string, password: string) => Promise<StaffMe>;
+  demoStaffLogin: (role: "admin" | "mentor") => Promise<StaffMe>;
   refreshIdentity: () => Promise<void>;
   setStudent: (student: StudentMe) => void;
   logout: () => Promise<void>;
@@ -199,6 +200,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return me;
   }, []);
 
+  const demoStaffLogin = useCallback(async (role: "admin" | "mentor") => {
+    await post("/api/student/exit", {}).catch(() => undefined);
+    const me = await post<StaffMe>("/api/auth/demo-login", { role });
+    setWeeks({}); pending.current.clear();
+    setIdentity({ status: "staff", staff: me });
+    return me;
+  }, []);
+
   const logout = useCallback(async () => {
     await post("/api/student/exit", {}).catch(() => undefined);
     await post("/api/auth/logout", {}).catch(() => undefined);
@@ -314,10 +323,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const staff = identity.status === "staff" ? identity.staff : null;
 
   const value = useMemo<AppContextValue>(() => ({
-    identity, currentUser: toAccount(identity), student, staff, enterStudent, staffLogin, refreshIdentity, setStudent,
+    identity, currentUser: toAccount(identity), student, staff, enterStudent, staffLogin, demoStaffLogin, refreshIdentity, setStudent,
     logout, schedule, selectedEvent, openEventDetail, closeEventDetail, openLeaveRequest, openMeetingSheet, showToast,
     preferences, updatePreference,
-  }), [identity, student, staff, enterStudent, staffLogin, refreshIdentity, setStudent, logout, schedule, selectedEvent,
+  }), [identity, student, staff, enterStudent, staffLogin, demoStaffLogin, refreshIdentity, setStudent, logout, schedule, selectedEvent,
     openEventDetail, closeEventDetail, openLeaveRequest, openMeetingSheet, showToast, preferences, updatePreference]);
 
   function primaryAction(event: ScheduleEvent | null) {

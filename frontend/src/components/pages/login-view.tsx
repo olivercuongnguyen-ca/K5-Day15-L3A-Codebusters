@@ -28,7 +28,7 @@ function UserIconSlot() {
 
 export function LoginView() {
   const router = useRouter();
-  const { enterStudent, staffLogin, showToast } = useApp();
+  const { enterStudent, staffLogin, demoStaffLogin, showToast } = useApp();
 
   const [role, setRole] = useState<UserRole>("student");
   const [studentCode, setStudentCode] = useState("");
@@ -38,8 +38,26 @@ export function LoginView() {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
+  const [demoBusyRole, setDemoBusyRole] = useState<"admin" | "mentor" | null>(null);
   const [setup, setSetup] = useState<{ timetable: boolean; students: number } | null>(null);
   const [uploadMsg, setUploadMsg] = useState<string | undefined>();
+
+  async function handleDemoLogin(targetRole: "admin" | "mentor") {
+    setErrorMessage(undefined);
+    setDemoBusyRole(targetRole);
+    try {
+      const me = await demoStaffLogin(targetRole);
+      showToast(
+        `Đã đăng nhập nhanh · ${me.display_name} (${me.role === "admin" ? "Admin" : "Mentor"})`,
+        "success",
+      );
+      router.push("/");
+    } catch (err) {
+      setErrorMessage((err as Error).message);
+    } finally {
+      setDemoBusyRole(null);
+    }
+  }
 
   useEffect(() => {
     api<{ timetable: boolean; students: number }>("/api/setup/status").then(setSetup).catch(() => setSetup(null));
@@ -279,6 +297,44 @@ export function LoginView() {
               </>
             )}
           </form>
+
+          {/* Quick Demo Login for Admin & Mentor */}
+          <div className="pt-4 border-t border-border flex flex-col gap-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[12px] font-medium text-text-secondary">
+                Đăng nhập nhanh (Demo)
+              </span>
+              <Badge variant="outline" size="sm">
+                1 chạm
+              </Badge>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                leftIcon={<ShieldIcon size={15} />}
+                loading={demoBusyRole === "admin"}
+                disabled={busy || demoBusyRole !== null}
+                onClick={() => void handleDemoLogin("admin")}
+                className="justify-center"
+              >
+                Demo Admin
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                leftIcon={<SchoolIcon size={15} />}
+                loading={demoBusyRole === "mentor"}
+                disabled={busy || demoBusyRole !== null}
+                onClick={() => void handleDemoLogin("mentor")}
+                className="justify-center"
+              >
+                Demo Mentor
+              </Button>
+            </div>
+          </div>
         </main>
 
         {/* Footer links */}
