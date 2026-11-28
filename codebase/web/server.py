@@ -413,10 +413,10 @@ async def _ingest_upload(file: UploadFile, user_id):
         if not r["ok"]:
             raise HTTPException(400, "Email bị từ chối: %s" % r["reason"])
         html = r["html"]
-    elif mail_ingest.NAME_RE.match(name):
+    elif name.lower().endswith((".html", ".htm")):
         html = raw.decode("utf-8")
     else:
-        raise HTTPException(400, "Chỉ nhận file Thoi_khoa_bieu*.html hoặc email .eml chứa file đó.")
+        raise HTTPException(400, "Chỉ nhận file thời khoá biểu .html/.htm hoặc email .eml.")
     con = store.connect()
     try:
         res = store.ingest_tkb(con, html, source="upload:%s" % name)

@@ -145,6 +145,7 @@ export function weekStrip(selectedKey: string, events: ScheduleEvent[], today = 
 // ---------- Backend item -> ScheduleEvent ----------
 const KIND_LABEL: Record<string, string> = {
   LEC: "Lý thuyết", LAB: "Thực hành", ONL: "Học online", KG: "Khai giảng", HACK: "Hackathon",
+  L2: "Chuyên sâu", L3: "Chuyên sâu",
 };
 
 function categoryOf(i: BackendItem): EventCategory {

@@ -71,6 +71,26 @@ def test_ingest_merges_non_overlapping_weeks(tmp_path):
     assert w2["items"][0]["my_room"] == "E305"
 
 
+def test_ingest_merges_phase2_different_class_name(tmp_path):
+    con = store.connect(str(tmp_path / "t.db"))
+    store.ingest_tkb(con, tkb_html())
+    phase2_html = (
+        '<html><body><script>\n'
+        'const GROUPS={"T3A":{"label":"L3 · Track 3A","level":"AI Apps","items":['
+        '{"d":"2026-11-30","slot":"Sáng","kind":"L3","name":"Chuyên sâu 1","rooms":["H210"],"time":["09:00","13:00"]}]}};\n'
+        'const STU={"SV0001":["T3A","H210"]};\n'
+        'const WHO={"SV0001":["N.V.A",""]};\n'
+        'const HOLI={};\n'
+        '</script></body></html>'
+    )
+    r2 = store.ingest_tkb(con, phase2_html)
+    assert r2["new"]
+    w1 = store.week(con, "SV0001", "2026-11-23")
+    w2 = store.week(con, "SV0001", "2026-11-30")
+    assert len(w1["items"]) == 2 and w1["items"][0]["my_room"] == "H201"
+    assert len(w2["items"]) == 1 and w2["items"][0]["my_room"] == "H210"
+
+
 def test_ics_parse_times_categories_and_folding():
     ev = ics_feed.parse(ICS)
     duty = [e for e in ev if e["category"] == "mentor_duty"][0]

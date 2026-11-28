@@ -366,7 +366,8 @@ def week(con, student_id: str, monday: str) -> dict:
         return {"student_id": student_id, "found": False, "items": []}
     items = []
     for s in con.execute("SELECT s.*, r.room AS my_room FROM sessions s LEFT JOIN student_rooms r "
-                         "ON r.session_id=s.id AND r.student_id=? WHERE s.class=? AND s.date BETWEEN ? AND ? "
+                         "ON r.session_id=s.id AND r.student_id=? "
+                         "WHERE (r.student_id IS NOT NULL OR s.class=?) AND s.date BETWEEN ? AND ? "
                          "ORDER BY s.date, s.start, s.id", (student_id, st["class"], days[0], days[-1])):
         items.append({"source": "tkb", "id": s["id"], "kind": s["kind"], "title": s["name"],
                       "start": "%sT%s:00+07:00" % (s["date"], s["start"]),

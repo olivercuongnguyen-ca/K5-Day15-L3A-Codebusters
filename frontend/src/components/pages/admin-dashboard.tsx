@@ -158,14 +158,18 @@ export function AdminDashboard() {
     fd.append("file", file);
     setUploadingTkb(true);
     try {
-      const res = await api<{ students?: number; sessions?: number }>(
+      const res = await api<{ students?: number; new?: boolean; room_changes?: number }>(
         "/api/admin/ingest",
         { method: "POST", body: fd },
       );
-      showToast(
-        `Đã cập nhật thời khóa biểu${res.students ? ` (${res.students} học viên)` : ""}.`,
-        "success",
-      );
+      if (res.new === false) {
+        showToast("Bản thời khóa biểu này đã được nạp trước đó (không có thay đổi mới).", "info");
+      } else {
+        showToast(
+          `Đã cập nhật thời khóa biểu mới${res.students ? ` (${res.students} học viên)` : ""}.`,
+          "success",
+        );
+      }
       await loadClasses();
       if (selectedClass) await loadSessions(selectedClass);
     } catch (err) {

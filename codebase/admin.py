@@ -18,7 +18,12 @@ HM_RE = re.compile(r"^\d{2}:\d{2}$")
 
 
 def classes(con) -> list:
-    return [dict(r) for r in con.execute("SELECT class, count(*) students FROM students GROUP BY class ORDER BY class")]
+    return [dict(r) for r in con.execute(
+        "SELECT s.class, COALESCE(st.n, 0) AS students "
+        "FROM (SELECT DISTINCT class FROM sessions) s "
+        "LEFT JOIN (SELECT class, count(*) n FROM students GROUP BY class) st ON st.class=s.class "
+        "ORDER BY s.class"
+    )]
 
 
 def list_sessions(con, cls: str, date_from: str = "0000", date_to: str = "9999") -> list:
