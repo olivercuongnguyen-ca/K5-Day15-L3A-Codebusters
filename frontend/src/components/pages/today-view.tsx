@@ -19,6 +19,12 @@ import {
   VideoIcon,
 } from "@/components/ui";
 import { useApp, useHydrated } from "@/components/app/app-provider";
+import {
+  NotificationsSheet,
+  useStudentNotifications,
+} from "@/components/app/notifications-sheet";
+import { AdminDashboard } from "./admin-dashboard";
+import { MentorDashboard } from "./mentor-dashboard";
 
 /** Thin "now" marker between what already happened and what is next. */
 function NowLine({ lineRef }: { lineRef: Ref<HTMLDivElement> }) {
@@ -32,12 +38,21 @@ function NowLine({ lineRef }: { lineRef: Ref<HTMLDivElement> }) {
 }
 
 export function TodayView() {
-  const { currentUser, student, schedule, openEventDetail, openLeaveRequest, openMeetingSheet, showToast, preferences } =
+  const { currentUser, student, staff, schedule, openEventDetail, openLeaveRequest, openMeetingSheet, preferences } =
     useApp();
   const TODAY_DATE_KEY = schedule.todayKey;
   const [pickedDateKey, setSelectedDateKey] = useState<string | null>(null);
   const selectedDateKey = pickedDateKey ?? TODAY_DATE_KEY;  // follows today until the student picks a day
-  const [highlightBanner, setHighlightBanner] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const {
+    notifications,
+    unreadCount,
+    seenSet,
+    loading: notifsLoading,
+    refresh: refreshNotifs,
+    markRead,
+    markAllRead,
+  } = useStudentNotifications();
   const { ensureWeek } = schedule;
   useEffect(() => { if (selectedDateKey) ensureWeek(selectedDateKey); }, [selectedDateKey, ensureWeek]);
 
@@ -81,6 +96,8 @@ export function TodayView() {
   const hydrated = useHydrated();
 
   if (!hydrated) return <div aria-busy="true" className="min-h-[60dvh]" />;
+  if (staff?.role === "admin") return <AdminDashboard />;
+  if (staff?.role === "mentor") return <MentorDashboard />;
 
   return (
     <div className="flex flex-col gap-4 md:gap-6">
@@ -119,17 +136,27 @@ export function TodayView() {
           >
             Xin nghỉ buổi học
           </Button>
-          <IconButton
-            aria-label="Xem thông báo đổi lịch"
-            hasDot={Boolean(changedEvent)}
-            pressed={highlightBanner}
-            icon={<BellIcon size={18} className="md:w-5 md:h-5" />}
-            onClick={() => {
-              setHighlightBanner((prev) => !prev);
-              showToast(changedEvent ? `${changedEvent.title}: ${changedEvent.changeNote}` : "Không có thay đổi lịch nào sắp tới.",
-                changedEvent ? "warning" : "info");
-            }}
-          />
+          <div className="relative">
+            <IconButton
+              aria-label={
+                unreadCount > 0
+                  ? `Xem thông báo thay đổi lịch (${unreadCount} chưa đọc)`
+                  : "Xem thông báo thay đổi lịch"
+              }
+              hasDot={unreadCount > 0 || Boolean(changedEvent)}
+              pressed={notifOpen}
+              icon={<BellIcon size={18} className="md:w-5 md:h-5" />}
+              onClick={() => setNotifOpen(true)}
+            />
+            {unreadCount > 0 ? (
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-danger text-white text-[10px] font-bold inline-flex items-center justify-center tabular-nums shadow-sm"
+              >
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            ) : null}
+          </div>
         </div>
       </header>
 
@@ -160,27 +187,43 @@ export function TodayView() {
       ) : null}
 
       {/* Schedule Change Banner */}
-      {changedEvent ? (
+      {changedEvent || (unreadCount > 0 && notifications[0]) ? (
         <div
           className={cn(
             "flex items-center justify-between gap-2.5 md:gap-3 px-3.5 py-2.5 md:px-4 md:py-3 rounded-[16px] md:rounded-[20px] bg-warning-background text-on-warning transition-shadow duration-[180ms]",
-            highlightBanner && "ring-2 ring-primary",
+            unreadCount > 0 && "ring-1 ring-amber-400/70",
           )}
         >
           <div className="flex items-center gap-2 md:gap-2.5 min-w-0">
             <ClockIcon size={17} className="shrink-0 md:w-[19px] md:h-[19px]" />
             <span className="text-[13px] md:text-[14px] leading-[18px] md:leading-[20px] text-pretty">
-              <strong className="font-semibold">{changedEvent.title}</strong>
-              {" · "}
-              {changedEvent.changeNote}
+              {changedEvent ? (
+                <>
+                  <strong className="font-semibold">{changedEvent.title}</strong>
+                  {" · "}
+                  {changedEvent.changeNote}
+                </>
+              ) : (
+                <>
+                  <strong className="font-semibold">{notifications[0]?.title}</strong>
+                  {" · "}
+                  {notifications[0]?.body}
+                </>
+              )}
             </span>
           </div>
           <button
             type="button"
-            onClick={() => openEventDetail(changedEvent)}
+            onClick={() => {
+              if (unreadCount > 0) {
+                setNotifOpen(true);
+              } else if (changedEvent) {
+                openEventDetail(changedEvent);
+              }
+            }}
             className="text-[12px] md:text-[13px] font-medium underline underline-offset-2 shrink-0 min-h-8 md:min-h-9 px-2 rounded-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
-            Chi tiết
+            {unreadCount > 1 ? `Xem (${unreadCount})` : "Chi tiết"}
           </button>
         </div>
       ) : null}
@@ -348,6 +391,18 @@ export function TodayView() {
           ))}
         </div>
       </section>
+      <NotificationsSheet
+        open={notifOpen}
+        onOpenChange={setNotifOpen}
+        notifications={notifications}
+        unreadCount={unreadCount}
+        seenSet={seenSet}
+        loading={notifsLoading}
+        onRefresh={refreshNotifs}
+        onMarkRead={markRead}
+        onMarkAllRead={markAllRead}
+        onSelectDate={(dk) => setSelectedDateKey(dk)}
+      />
     </div>
   );
 }

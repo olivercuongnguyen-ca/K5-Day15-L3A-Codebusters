@@ -34,10 +34,29 @@ export interface AppShellProps {
 
 export function AppShell({ children, hideRightAside = false }: AppShellProps) {
   const pathname = usePathname();
-  const { openEventDetail, currentUser: user, schedule } = useApp();
+  const { openEventDetail, currentUser: user, staff, schedule } = useApp();
   const hydrated = useHydrated();
   // signed-in details only after hydration (see useHydrated)
   const currentUser = hydrated ? user : { ...user, name: "", initials: "", roleLabel: "", studentCode: "", shortName: "" };
+  const isStaff = hydrated && Boolean(staff);
+  const showRightAside = !hideRightAside && hydrated && !isStaff;
+
+  const sidebarRoutes = isStaff
+    ? [
+        {
+          href: "/",
+          label: staff?.role === "admin" ? "Quản trị" : "Lịch trực",
+          key: "today" as const,
+        },
+        { href: "/settings", label: "Cài đặt", key: "settings" as const },
+      ]
+    : NAV_ROUTES;
+
+  const brandSubtitle = isStaff
+    ? staff?.role === "admin"
+      ? "Quản trị đào tạo"
+      : "Cổng Mentor"
+    : "Lịch học hợp nhất";
 
   const nextEvent = schedule.getNextUpcomingEvent();
   const upcomingDeadlines = schedule.getUpcomingDeadlines().slice(0, 2);
@@ -65,14 +84,14 @@ export function AppShell({ children, hideRightAside = false }: AppShellProps) {
                 Unify
               </span>
               <span className="text-[12px] leading-[16px] text-text-secondary">
-                Lịch học hợp nhất
+                {brandSubtitle}
               </span>
             </div>
           </Link>
 
           {/* Navigation Links */}
           <nav aria-label="Điều hướng chính" className="flex flex-col gap-1.5">
-            {NAV_ROUTES.map((item) => {
+            {sidebarRoutes.map((item) => {
               const isActive =
                 item.href === "/"
                   ? pathname === "/"
@@ -147,13 +166,13 @@ export function AppShell({ children, hideRightAside = false }: AppShellProps) {
 
       {/* Main Content Area */}
       <main className="flex-1 min-w-0 px-4 sm:px-5 md:px-7 lg:px-8 pt-3 md:py-8 pb-[calc(92px+env(safe-area-inset-bottom))] md:pb-10">
-        <div className={cn("mx-auto w-full", hideRightAside ? "max-w-4xl" : "max-w-3xl")}>
+        <div className={cn("mx-auto w-full", !showRightAside ? "max-w-4xl" : "max-w-3xl")}>
           {children}
         </div>
       </main>
 
-      {/* Desktop Right Contextual Column (1024px–1440px+) */}
-      {!hideRightAside && hydrated ? (
+      {/* Desktop Right Contextual Column (1024px–1440px+, Student only) */}
+      {showRightAside ? (
         <aside
           aria-label="Buổi tiếp theo và hạn nộp"
           className="hidden lg:flex lg:flex-col lg:w-80 xl:w-[340px] shrink-0 gap-5 py-8 pr-6 xl:pr-8 sticky top-0 self-start"

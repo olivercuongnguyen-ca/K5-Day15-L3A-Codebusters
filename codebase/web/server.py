@@ -394,8 +394,10 @@ async def _ingest_upload(file: UploadFile, user_id):
     except TkbFormatError as e:
         raise HTTPException(400, "File không đúng định dạng thời khoá biểu: %s" % e)
     auth.audit(con, user_id, "ingest_tkb", {"file": name, "version": res["version"], "new": res["new"]})
-    if res["new"] and res["room_changes"]:
-        notify.notify_room_changes(con, res["version"])
+    if res["new"]:
+        if res["room_changes"]:
+            notify.notify_room_changes(con, res["version"])
+        notify.notify_tkb_updated(con, res["version"])
     return res
 
 
@@ -448,6 +450,117 @@ def leave(body: LeaveIn, user=Depends(student_only)):
     return out
 
 
+# ---- Student notifications (timetable, room, time & mentor duty changes) ----
+@app.get("/api/student/notifications")
+def student_notifications(user=Depends(student_only)):
+    con = store.connect()
+    sid = user["student_id"]
+    st = con.execute("SELECT id, class, team FROM students WHERE id=?", (sid,)).fetchone()
+    if not st:
+        return {"notifications": []}
+
+    items = []
+    # 1. Room changes for this student
+    for r in con.execute(
+        "SELECT rc.version, rc.session_id, rc.old_room, rc.new_room, s.name, s.date, s.start, s.\"end\" "
+        "FROM room_changes rc LEFT JOIN sessions s ON s.id=rc.session_id "
+        "WHERE rc.student_id=? ORDER BY rc.version DESC LIMIT 20",
+        (sid,),
+    ).fetchall():
+        when = "%s/%s %s–%s" % (r["date"][8:10], r["date"][5:7], r["start"], r["end"]) if r["date"] else ""
+        at = r["version"].split("admin:", 1)[1] if str(r["version"] or "").startswith("admin:") else str(r["version"] or "")
+        items.append({
+            "id": "room:%s:%s:%s" % (r["version"], r["session_id"], r["new_room"]),
+            "kind": "room_change",
+            "title": "Đổi phòng: %s" % (r["name"] or r["session_id"]),
+            "body": "Phòng %s → %s%s" % (r["old_room"] or "—", r["new_room"], (" · " + when) if when else ""),
+            "at": at,
+            "session_id": r["session_id"],
+            "date_key": r["date"],
+        })
+
+    # 2. Admin session time/date updates for this student's class
+    sessions_by_id = {
+        r["id"]: dict(r)
+        for r in con.execute("SELECT id, name, date, start, \"end\" FROM sessions WHERE class=?", (st["class"],)).fetchall()
+    }
+    for row in con.execute(
+        "SELECT at, detail FROM audit_log WHERE action='update_session' ORDER BY at DESC LIMIT 30"
+    ).fetchall():
+        try:
+            d = json.loads(row["detail"] or "{}")
+        except Exception:
+            continue
+        sess = sessions_by_id.get(d.get("id"))
+        if not sess:
+            continue
+        if not d.get("date") and not d.get("start"):
+            continue
+        when = "%s/%s %s–%s" % (
+            (d.get("date") or sess["date"])[8:10],
+            (d.get("date") or sess["date"])[5:7],
+            d.get("start") or sess["start"],
+            d.get("end") or sess["end"],
+        )
+        note = (" · " + d["note"]) if d.get("note") else ""
+        items.append({
+            "id": "time:%s:%s" % (row["at"], sess["id"]),
+            "kind": "time_change",
+            "title": "Đổi lịch học: %s" % sess["name"],
+            "body": "Chuyển sang %s%s" % (when, note),
+            "at": row["at"] or "",
+            "session_id": sess["id"],
+            "date_key": d.get("date") or sess["date"],
+        })
+
+    # 3. Mentor duty changes for this student's team
+    if st["team"]:
+        for c in con.execute(
+            "SELECT id, source, team, start, \"end\", cancelled, note, updated_at FROM duty_changes "
+            "WHERE team=? ORDER BY updated_at DESC LIMIT 20",
+            (st["team"],),
+        ).fetchall():
+            when = "%s/%s %s–%s" % (c["start"][8:10], c["start"][5:7], c["start"][11:16], c["end"][11:16]) if c["start"] else ""
+            if c["cancelled"]:
+                title = "Hủy ca mentor duty (%s)" % c["team"]
+                kind = "duty_cancelled"
+            elif c["source"] == "mentor":
+                title = "Thêm ca mentor duty mới (%s)" % c["team"]
+                kind = "duty_change"
+            else:
+                title = "Đổi giờ mentor duty (%s)" % c["team"]
+                kind = "duty_change"
+            note = (" · " + c["note"]) if c["note"] else ""
+            items.append({
+                "id": "duty:%s:%s" % (c["id"], c["updated_at"] or ""),
+                "kind": kind,
+                "title": title,
+                "body": "%s%s" % (when, note),
+                "at": c["updated_at"] or "",
+                "session_id": c["id"],
+                "date_key": c["start"][:10] if c["start"] else None,
+            })
+
+    # 4. Latest official timetable version update
+    ver = con.execute(
+        "SELECT hash, received_at, source FROM tkb_versions ORDER BY received_at DESC LIMIT 1"
+    ).fetchone()
+    if ver:
+        at = ver["received_at"] or ""
+        items.append({
+            "id": "tkb:%s" % ver["hash"],
+            "kind": "tkb_update",
+            "title": "Thời khóa biểu lớp %s đã cập nhật" % st["class"],
+            "body": "Bản mới nhất ngày %s/%s lúc %s." % (at[8:10], at[5:7], at[11:16]) if len(at) >= 16 else "Đã cập nhật thời khóa biểu mới.",
+            "at": at,
+            "session_id": None,
+            "date_key": None,
+        })
+
+    items.sort(key=lambda x: x.get("at") or "", reverse=True)
+    return {"notifications": items[:30]}
+
+
 # ---- Push notifications ----
 @app.get("/api/push/key")
 def push_key():
@@ -469,6 +582,33 @@ def push_test(user=Depends(student_only)):
     n = notify.send(store.connect(), user["student_id"], "Thông báo đã bật",
                     "Bạn sẽ được nhắc trước hạn nộp, trước giờ học và khi phòng học thay đổi.", tag="test")
     return {"sent": n}
+
+
+class PushPrefsIn(BaseModel):
+    class_minutes: int = 60
+    remind_duty: bool = True
+    remind_meeting: bool = True
+    remind_deadline: bool = True
+
+
+@app.get("/api/push/prefs")
+def push_prefs_get(user=Depends(student_only)):
+    return notify.get_prefs(store.connect(), user["student_id"])
+
+
+@app.put("/api/push/prefs")
+def push_prefs_set(body: PushPrefsIn, user=Depends(student_only)):
+    try:
+        return notify.set_prefs(
+            store.connect(),
+            user["student_id"],
+            class_minutes=body.class_minutes,
+            remind_duty=body.remind_duty,
+            remind_meeting=body.remind_meeting,
+            remind_deadline=body.remind_deadline,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
 
 
 def _public_base(request: Request) -> str:

@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import {
   CalendarIcon,
   SettingsIcon,
   TodayIcon,
 } from "@/components/ui";
+import { useApp, useHydrated } from "./app-provider";
 
 export interface NavRouteItem {
   href: string;
@@ -47,15 +48,13 @@ function shouldShowBottomNav(pathname: string): boolean {
   );
 }
 
-function getActiveIndex(pathname: string): number {
+function getActiveIndex(pathname: string, routes: NavRouteItem[]): number {
   if (pathname === "/") return 0;
-  const idx = NAV_ROUTES.findIndex(
+  const idx = routes.findIndex(
     (item) => item.href !== "/" && pathname.startsWith(item.href),
   );
   return idx === -1 ? 0 : idx;
 }
-
-const SLOT_PERCENT = 100 / NAV_ROUTES.length;
 
 /**
  * Persistent mobile floating glass-pill bottom navigation styled after P-090:
@@ -64,12 +63,32 @@ const SLOT_PERCENT = 100 / NAV_ROUTES.length;
 export function SnakeBottomNav() {
   const router = useRouter();
   const pathname = usePathname();
+  const { staff } = useApp();
+  const hydrated = useHydrated();
+  const isStaff = hydrated && Boolean(staff);
+
+  const routes = useMemo<NavRouteItem[]>(
+    () =>
+      isStaff
+        ? [
+            {
+              href: "/",
+              label: staff?.role === "admin" ? "Quản trị" : "Lịch trực",
+              key: "today",
+            },
+            { href: "/settings", label: "Cài đặt", key: "settings" },
+          ]
+        : NAV_ROUTES,
+    [isStaff, staff?.role],
+  );
+
+  const slotPercent = 100 / routes.length;
   const isVisible = shouldShowBottomNav(pathname);
-  const routeIndex = getActiveIndex(pathname);
+  const routeIndex = getActiveIndex(pathname, routes);
 
   const [pill, setPill] = useState<SnakePillState>({
-    leftPct: routeIndex * SLOT_PERCENT,
-    widthPct: SLOT_PERCENT,
+    leftPct: routeIndex * slotPercent,
+    widthPct: slotPercent,
     phase: "idle",
   });
 
@@ -77,14 +96,14 @@ export function SnakeBottomNav() {
 
   useEffect(() => {
     if (!isVisible) return;
-    NAV_ROUTES.forEach((item) => {
+    routes.forEach((item) => {
       try {
         router.prefetch(item.href);
       } catch {
         // ignore prefetch errors
       }
     });
-  }, [isVisible, router]);
+  }, [isVisible, routes, router]);
 
   useEffect(() => {
     if (!isVisible) {
@@ -93,11 +112,12 @@ export function SnakeBottomNav() {
     }
 
     const prevIdx = prevIndexRef.current;
-    if (prevIdx === routeIndex) {
+    if (prevIdx === routeIndex || prevIdx >= routes.length) {
+      prevIndexRef.current = routeIndex;
       const syncRaf = window.requestAnimationFrame(() => {
         setPill({
-          leftPct: routeIndex * SLOT_PERCENT,
-          widthPct: SLOT_PERCENT,
+          leftPct: routeIndex * slotPercent,
+          widthPct: slotPercent,
           phase: "idle",
         });
       });
@@ -114,8 +134,8 @@ export function SnakeBottomNav() {
     if (reducedMotion) {
       const reducedRaf = window.requestAnimationFrame(() => {
         setPill({
-          leftPct: routeIndex * SLOT_PERCENT,
-          widthPct: SLOT_PERCENT,
+          leftPct: routeIndex * slotPercent,
+          widthPct: slotPercent,
           phase: "idle",
         });
       });
@@ -130,15 +150,15 @@ export function SnakeBottomNav() {
 
     const raf = window.requestAnimationFrame(() => {
       setPill({
-        leftPct: startIdx * SLOT_PERCENT,
-        widthPct: span * SLOT_PERCENT,
+        leftPct: startIdx * slotPercent,
+        widthPct: span * slotPercent,
         phase: "stretch",
       });
 
       contractTimer = setTimeout(() => {
         setPill({
-          leftPct: routeIndex * SLOT_PERCENT,
-          widthPct: SLOT_PERCENT,
+          leftPct: routeIndex * slotPercent,
+          widthPct: slotPercent,
           phase: "contract",
         });
 
@@ -155,7 +175,7 @@ export function SnakeBottomNav() {
       if (contractTimer) clearTimeout(contractTimer);
       if (idleTimer) clearTimeout(idleTimer);
     };
-  }, [routeIndex, isVisible]);
+  }, [routeIndex, isVisible, routes.length, slotPercent]);
 
   if (!isVisible) {
     return null;
@@ -190,7 +210,7 @@ export function SnakeBottomNav() {
             className="absolute inset-y-0 rounded-full bg-gradient-to-br from-[#171719] via-[#261E31] to-[#4A3562] shadow-[0_8px_20px_-4px_rgba(92,67,117,0.48)] pointer-events-none z-0"
           />
 
-          {NAV_ROUTES.map((item, idx) => {
+          {routes.map((item, idx) => {
             const isActive = idx === routeIndex;
             return (
               <Link

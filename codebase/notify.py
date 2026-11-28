@@ -90,6 +90,56 @@ def _once(con, key: str) -> bool:
         return False
 
 
+VALID_REMINDER_MINUTES = (15, 30, 60)
+
+
+def get_prefs(con, student_id: str) -> dict:
+    row = con.execute(
+        "SELECT class_minutes, remind_duty, remind_meeting, remind_deadline FROM push_prefs WHERE student_id=?",
+        (student_id,),
+    ).fetchone()
+    if not row:
+        return {
+            "class_minutes": 60,
+            "remind_duty": True,
+            "remind_meeting": True,
+            "remind_deadline": True,
+        }
+    mins = int(row["class_minutes"] or 60)
+    if mins not in VALID_REMINDER_MINUTES:
+        mins = 60
+    return {
+        "class_minutes": mins,
+        "remind_duty": bool(row["remind_duty"]),
+        "remind_meeting": bool(row["remind_meeting"]),
+        "remind_deadline": bool(row["remind_deadline"]),
+    }
+
+
+def set_prefs(
+    con,
+    student_id: str,
+    class_minutes: int = 60,
+    remind_duty: bool = True,
+    remind_meeting: bool = True,
+    remind_deadline: bool = True,
+) -> dict:
+    mins = int(class_minutes)
+    if mins not in VALID_REMINDER_MINUTES:
+        raise ValueError("Mốc nhắc hẹn chỉ hỗ trợ 15, 30 hoặc 60 phút.")
+    now = datetime.now(VN).isoformat(timespec="seconds")
+    with con:
+        con.execute(
+            "INSERT INTO push_prefs (student_id, class_minutes, remind_duty, remind_meeting, remind_deadline, updated_at) "
+            "VALUES (?,?,?,?,?,?) ON CONFLICT(student_id) DO UPDATE SET "
+            "class_minutes=excluded.class_minutes, remind_duty=excluded.remind_duty, "
+            "remind_meeting=excluded.remind_meeting, remind_deadline=excluded.remind_deadline, "
+            "updated_at=excluded.updated_at",
+            (student_id, mins, int(bool(remind_duty)), int(bool(remind_meeting)), int(bool(remind_deadline)), now),
+        )
+    return get_prefs(con, student_id)
+
+
 def notify_room_changes(con, version: str):
     for c in con.execute("SELECT c.*, s.name, s.date, s.start FROM room_changes c JOIN sessions s ON s.id=c.session_id "
                          "WHERE c.version=?", (version,)).fetchall():
@@ -99,27 +149,56 @@ def notify_room_changes(con, version: str):
                                                     c["old_room"] or "—", c["new_room"]), tag="room")
 
 
+def notify_tkb_updated(con, version: str):
+    """Push a general timetable-updated notice to every subscribed student for a newly ingested version."""
+    for row in con.execute("SELECT DISTINCT student_id FROM push_subs").fetchall():
+        sid = row["student_id"]
+        if _once(con, "tkb:%s:%s" % (version, sid)):
+            try:
+                send(con, sid, "Thời khóa biểu đã cập nhật",
+                     "Đã có phiên bản thời khóa biểu mới. Mở Unify để kiểm tra lịch học và phòng học của bạn.",
+                     tag="tkb")
+            except Exception:
+                pass
+
+
 def tick(con, now=None):
     now = now or datetime.now(VN)
     for row in con.execute("SELECT DISTINCT student_id FROM push_subs").fetchall():
         sid = row["student_id"]
+        prefs = get_prefs(con, sid)
+        mins = prefs["class_minutes"]
+        lead = timedelta(minutes=mins)
         horizon = (now + timedelta(hours=25)).isoformat()
         for i in store.all_items(con, sid):
+            if i.get("cancelled"):
+                continue
             start = datetime.fromisoformat(i["start"])
             if not (now < start and i["start"] <= horizon):
                 continue
             left = start - now
             if i.get("is_deadline"):
+                if not prefs["remind_deadline"]:
+                    continue
                 for label, win in (("24h", timedelta(hours=24)), ("1h", timedelta(hours=1))):
                     if left <= win and _once(con, "dl:%s:%s:%s" % (sid, i["id"], label)):
                         send(con, sid, "Sắp đến hạn: " + i["title"],
                              "Còn %s — hạn lúc %s %s/%s" % ("dưới 1 giờ" if label == "1h" else "dưới 24 giờ",
                                                           i["start"][11:16], i["start"][8:10], i["start"][5:7]),
                              tag="deadline")
-            elif i["source"] == "tkb" and left <= timedelta(minutes=60) and _once(con, "cls:%s:%s" % (sid, i["id"])):
+            elif i["source"] == "tkb" and left <= lead and _once(con, "cls:%s:%s:%s" % (sid, i["id"], mins)):
                 where = "Online" if i["kind"] == "ONL" else ("phòng " + i["my_room"] if i.get("my_room") else "chưa có phòng")
-                send(con, sid, "%s lúc %s" % (i["title"], i["start"][11:16]), "Bắt đầu sau ít hơn 1 giờ · " + where,
+                send(con, sid, "%s lúc %s" % (i["title"], i["start"][11:16]),
+                     "Bắt đầu sau ít hơn %d phút · %s" % (mins, where),
                      tag="class")
+            elif i.get("kind") == "mentor_duty" and prefs["remind_duty"] and left <= lead and _once(con, "duty:%s:%s:%s" % (sid, i["id"], mins)):
+                send(con, sid, "Mentor Duty: %s lúc %s" % (i["title"], i["start"][11:16]),
+                     "Ca trực bắt đầu sau ít hơn %d phút." % mins,
+                     tag="duty")
+            elif i.get("kind") == "team_meeting" and prefs["remind_meeting"] and left <= lead and _once(con, "mtg:%s:%s:%s" % (sid, i["id"], mins)):
+                send(con, sid, "Họp nhóm: %s lúc %s" % (i["title"], i["start"][11:16]),
+                     "Cuộc họp bắt đầu sau ít hơn %d phút." % mins,
+                     tag="meeting")
 
 
 def refresh_feeds(con, max_age=timedelta(hours=1)):

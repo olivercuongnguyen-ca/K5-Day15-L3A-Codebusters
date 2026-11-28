@@ -52,6 +52,11 @@ export function Sheet({
   const subtitleId = useId();
   const sheetRef = useRef<HTMLDivElement | null>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const onOpenChangeRef = useRef(onOpenChange);
+
+  useEffect(() => {
+    onOpenChangeRef.current = onOpenChange;
+  }, [onOpenChange]);
 
   useEffect(() => {
     if (!open) return;
@@ -61,16 +66,18 @@ export function Sheet({
     document.body.style.overflow = "hidden";
 
     const focusTimer = window.setTimeout(() => {
-      const focusable = sheetRef.current?.querySelector<HTMLElement>(
-        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      );
-      (focusable ?? sheetRef.current)?.focus();
+      if (sheetRef.current && !sheetRef.current.contains(document.activeElement)) {
+        const focusable = sheetRef.current.querySelector<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        );
+        (focusable ?? sheetRef.current).focus();
+      }
     }, 10);
 
     function handleKeyDown(event: globalThis.KeyboardEvent) {
       if (event.key === "Escape") {
         event.stopPropagation();
-        onOpenChange(false);
+        onOpenChangeRef.current(false);
       }
     }
 
@@ -81,7 +88,7 @@ export function Sheet({
       document.body.style.overflow = originalOverflow;
       previousFocusRef.current?.focus();
     };
-  }, [open, onOpenChange]);
+  }, [open]);
 
   if (!open) return null;
 

@@ -183,6 +183,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [identity.status, pathname, router]);
 
   const enterStudent = useCallback(async (studentId: string, squad?: string) => {
+    await post("/api/auth/logout", {}).catch(() => undefined);
     const me = await post<StudentMe>("/api/student/enter", { student_id: studentId, squad: squad ?? "" });
     const full = await api<StudentMe>("/api/student/me").catch(() => me);
     setWeeks({}); pending.current.clear();
@@ -191,7 +192,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const staffLogin = useCallback(async (username: string, password: string) => {
+    await post("/api/student/exit", {}).catch(() => undefined);
     const me = await post<StaffMe>("/api/auth/login", { username, password });
+    setWeeks({}); pending.current.clear();
     setIdentity({ status: "staff", staff: me });
     return me;
   }, []);
